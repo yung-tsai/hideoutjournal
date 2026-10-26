@@ -626,6 +626,9 @@ body[data-where="out"] #jcard .jhead .jtools{display:none}
 #jMenu button svg{width:18px;height:18px;flex:none;margin-top:1px;color:var(--ink-2)}
 #jMenu button span{display:block}
 .dq{margin:0 0 6px;font:italic 400 16px/1.4 var(--serif);color:var(--ink-3)}
+
+.listen[data-paused="true"]{cursor:pointer}
+.listen[data-paused="true"] #jListening{color:var(--ink);text-decoration:underline;text-underline-offset:3px}
 </style>
 
 <div id="stage"><canvas id="view" width="720" height="405" role="img" aria-label="Pixel-art sunset over snowy mountains, framed by tall pines, with a river and small waterfalls and a camper van with a campfire in a clearing"></canvas><div id="stagefx" aria-hidden="true"><canvas id="glowfx"></canvas><div id="artvig"></div></div><canvas id="inside" width="720" height="405" aria-hidden="true"></canvas></div>
@@ -1367,16 +1370,39 @@ const DemoTranscriber={
    embedded page; the journal then offers keyboard dictation or the sample transcript instead. */
 const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
 const LiveTranscriber={available:!!SR,
-  start({onLevel,onText,onError,onStall}){const rec=new SR();rec.continuous=true;rec.interimResults=true;rec.lang=navigator.language||'en-US';
-    let finals='',interim='',stopped=false,done=null,level=0,raf=0,lastHeard=0;const t0=performance.now(),all=()=>(finals+' '+interim).replace(/\s+/g,' ').trim();
-    rec.onresult=e=>{interim='';for(let i=e.resultIndex;i<e.results.length;i++){const r=e.results[i];if(r.isFinal)finals+=' '+r[0].transcript;else interim+=r[0].transcript}lastHeard=performance.now();heard=true;onText&&onText(all())};
-    let heard=false;const stallT=setTimeout(()=>{if(!heard&&!stopped)onStall&&onStall()},7000);
-    rec.onerror=e=>{if(e.error==='no-speech'||e.error==='aborted')return;stopped=true;cancelAnimationFrame(raf);onLevel&&onLevel(0,0);onError&&onError(e.error)};
-    rec.onend=()=>{if(!stopped){try{rec.start()}catch(_){}}else if(done)done(all())};
-    const step=now=>{const target=(now-lastHeard)<650?.45+.55*Math.abs(Math.sin(now/110)):.05;level+=(target-level)*.2;onLevel&&onLevel(level,(now-t0)/1000);raf=requestAnimationFrame(step)};raf=requestAnimationFrame(step);
-    try{rec.start()}catch(e){setTimeout(()=>{stopped=true;cancelAnimationFrame(raf);onError&&onError('start-failed')},0)}
-    return{stop(){stopped=true;clearTimeout(stallT);cancelAnimationFrame(raf);onLevel&&onLevel(0,0);return new Promise(res=>{done=res;try{rec.stop()}catch(_){res(all())}setTimeout(()=>res(all()),1500)})},
-      cancel(){stopped=true;clearTimeout(stallT);cancelAnimationFrame(raf);onLevel&&onLevel(0,0);try{rec.abort()}catch(_){}}}}};
+  start({onLevel,onText,onError,onStall,onPause,onResume}){
+    let finals='',interim='',stopped=false,done=null,level=0,raf=0,lastHeard=0,heard=false,rec=null,active=false,endedAt=0,tries=0,paused=false;
+    const t0=performance.now(),FATAL=['not-allowed','service-not-allowed','audio-capture','language-not-supported'];
+    // a finished phrase: capital first letter, "I" on its own, and a full stop if it has no ending
+    // join a finished phrase on: "I" on its own, a capital after a sentence ends, and a full stop after a real phrase (five words or more)
+    const join=(prev,x)=>{x=(x||'').trim();if(!x)return prev;x=x.replace(/\bi\b/g,'I');const p=prev.trim();
+      if(!p||/[.!?…]$/.test(p))x=x.charAt(0).toUpperCase()+x.slice(1);if(x.split(/\s+/).length>=5&&!/[.!?…,]$/.test(x))x+='.';return p+(p?' ':'')+x};
+    const all=()=>(finals+' '+interim).replace(/\s+/g,' ').trim();
+    const keepInterim=()=>{if(interim.trim()){finals=join(finals,interim);interim='';onText&&onText(all())}};
+    const make=()=>{const r=new SR();r.continuous=true;r.interimResults=true;r.lang=navigator.language||'en-US';
+      r.onstart=()=>{if(r!==rec)return;active=true;tries=0;if(paused){paused=false;onResume&&onResume()}};
+      r.onresult=e=>{if(r!==rec)return;interim='';for(let k=e.resultIndex;k<e.results.length;k++){const x=e.results[k];if(x.isFinal)finals=join(finals,x[0].transcript);else interim+=x[0].transcript}
+        lastHeard=performance.now();heard=true;onText&&onText(all())};
+      r.onerror=e=>{if(r!==rec)return;if(!FATAL.includes(e.error))return;   // no-speech, aborted, network: the session ends and we start another
+        stopped=true;clearInterval(dog);cancelAnimationFrame(raf);onLevel&&onLevel(0,0);onError&&onError(e.error)};
+      r.onend=()=>{if(r!==rec)return;active=false;endedAt=performance.now();
+        if(stopped){keepInterim();if(done)done(all());return}restart(180)};
+      return r};
+    const pause=()=>{if(paused||stopped)return;paused=true;keepInterim();onPause&&onPause()};
+    const restart=delay=>{if(stopped||paused)return;setTimeout(()=>{if(stopped||active||paused)return;keepInterim();tries++;
+      rec=make();try{rec.start()}catch(_){if(tries<4)restart(350*tries);else pause()}},delay)};
+    // a watchdog: sometimes a session just stops without telling anyone
+    const dog=setInterval(()=>{if(stopped){clearInterval(dog);return}
+      if(!active&&!paused&&endedAt&&performance.now()-endedAt>2500){if(tries<4)restart(0);else pause()}},1500);
+    let heardT=setTimeout(()=>{if(!heard&&!stopped)onStall&&onStall()},7000);
+    const step=now=>{const target=!paused&&(now-lastHeard)<650?.45+.55*Math.abs(Math.sin(now/110)):.05;level+=(target-level)*.2;onLevel&&onLevel(level,(now-t0)/1000);raf=requestAnimationFrame(step)};raf=requestAnimationFrame(step);
+    rec=make();try{rec.start()}catch(e){setTimeout(()=>{stopped=true;clearInterval(dog);cancelAnimationFrame(raf);onError&&onError('start-failed')},0)}
+    return{
+      stop(){stopped=true;clearTimeout(heardT);clearInterval(dog);cancelAnimationFrame(raf);onLevel&&onLevel(0,0);
+        return new Promise(res=>{done=res;if(!active){keepInterim();res(all());return}try{rec.stop()}catch(_){keepInterim();res(all())}setTimeout(()=>{keepInterim();res(all())},1500)})},
+      cancel(){stopped=true;clearTimeout(heardT);clearInterval(dog);cancelAnimationFrame(raf);onLevel&&onLevel(0,0);try{rec.abort()}catch(_){}},
+      // called from a tap, which browsers always allow to start the microphone
+      resume(){if(stopped)return;tries=0;rec=make();try{rec.start()}catch(e){onError&&onError('start-failed')}}}}};
 function micPolicyBlocked(){try{const fp=document.permissionsPolicy||document.featurePolicy;if(fp&&typeof fp.allowsFeature==='function'&&!fp.allowsFeature('microphone'))return true}catch(e){}return false}
 let voiceBlocked=micPolicyBlocked();   // once the mic is refused, stop offering live voice for this visit
 function useLiveVoice(){return state.dev.voice!=='demo'&&LiveTranscriber.available&&!voiceBlocked}
@@ -1785,8 +1811,11 @@ function startListening(forceDemo){if(!forceDemo&&state.dev.voice!=='demo'&&(voi
   timerId=setInterval(()=>{const s=Math.floor((performance.now()-t0)/1000);$('#jTimer').textContent=Math.floor(s/60)+':'+String(s%60).padStart(2,'0')},250);
   if(live){listenSess=LiveTranscriber.start({onLevel:waveLevel,onText:t=>{const el=$('#jLive');el.textContent=t;el.scrollTop=el.scrollHeight;$('#jVoiceMsg').hidden=true},
       onStall:()=>voiceMsg('Not hearing anything yet. If no words appear as you speak, live voice may be blocked here.',true),
+      onPause:()=>{const l=$('.listen');l.dataset.paused='true';$('#jListening').textContent='Paused. Tap to keep listening.'},
+      onResume:()=>{const l=$('.listen');delete l.dataset.paused;$('#jListening').textContent=session&&session.continued?'Still listening…':'Listening…'},
       onError:err=>{clearInterval(timerId);listenSess=null;if(BLOCKING.includes(err)){voiceBlocked=true;renderDev();startDictation('Live voice is blocked in this preview.');return}voiceMsg((VOICE_ERR[err]||'Live voice stopped unexpectedly.')+' You can tap Write and use the microphone on your keyboard, or try a sample transcript.')}})}
   else listenSess=Transcriber.start({continued:session.continued,onLevel:waveLevel})}
+$('.listen').addEventListener('click',()=>{const l=$('.listen');if(l.dataset.paused==='true'&&listenSess&&listenSess.resume)listenSess.resume()});
 function stopListening(){clearInterval(timerId);if(listenSess){const s=listenSess;listenSess=null;return s.stop()}return Promise.resolve('')}
 const STARTERS=['What’s taking up the most room in your head right now?','What was one small good thing today?','What’s something you keep putting off?','How does your body feel right now?','What would make tomorrow a little easier?','Who was on your mind today?','What would you like to set down before tonight?','What surprised you today?','What are you looking forward to, even a little?','What happened in the last hour?'];
 let stuckT=0,starterIdx=Math.floor(Math.random()*STARTERS.length);
