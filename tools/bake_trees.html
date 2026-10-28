@@ -1,0 +1,71 @@
+<!doctype html><html><body style="margin:0;background:transparent">
+<script type="importmap">{"imports":{"three":"/node_modules/three/build/three.module.js","three/addons/":"/node_modules/three/examples/jsm/"}}</script>
+<script type="module">
+import * as THREE from 'three';
+import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
+import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
+const CELL=512,COLS=8,ROWS=4;
+const r=new THREE.WebGLRenderer({antialias:true,alpha:true,preserveDrawingBuffer:true});r.setPixelRatio(1);r.setSize(CELL,CELL);
+r.outputColorSpace=THREE.SRGBColorSpace;r.setClearColor(0x000000,0);document.body.appendChild(r.domElement);
+const out=document.createElement('canvas');out.width=CELL*COLS;out.height=CELL*ROWS;const ctx=out.getContext('2d');
+function lights(scene){scene.add(new THREE.HemisphereLight(0xdfe8ff,0x6b6a55,1.25));const sun=new THREE.DirectionalLight(0xfff4e2,2.3);sun.position.set(-6,10,8);scene.add(sun)}
+const meta=[];
+function shoot(scene,row){const box=new THREE.Box3().setFromObject(scene.getObjectByName('tree'));const size=box.getSize(new THREE.Vector3()),ctr=box.getCenter(new THREE.Vector3());
+  const half=Math.max(size.x,size.z,size.y)/2*1.03;const cam=new THREE.OrthographicCamera(-half,half,half,-half,.1,400);
+  for(let i=0;i<8;i++){const a=i/8*Math.PI*2;cam.position.set(ctr.x+Math.sin(a)*150,ctr.y,ctr.z+Math.cos(a)*150);cam.lookAt(ctr.x,ctr.y,ctr.z);cam.updateProjectionMatrix();
+    r.render(scene,cam);ctx.drawImage(r.domElement,i*CELL,row*CELL)}
+  meta[row]={W:2*half,base:(half-(ctr.y-box.min.y))/(2*half),height:size.y}}
+
+/* ---------- row 0: the Jacaranda from Poly Haven ---------- */
+{const scene=new THREE.Scene();lights(scene);
+  const alpha=await new THREE.TextureLoader().loadAsync('jacaranda_tree_leaves_alpha_1k.png');alpha.flipY=false;
+  const g=await new GLTFLoader().loadAsync('tree.gltf');const tree=g.scene;tree.name='tree';
+  tree.traverse(o=>{if(o.isMesh){const ms=Array.isArray(o.material)?o.material:[o.material];ms.forEach(m=>{m.normalMap=null;m.roughnessMap=null;m.metalnessMap=null;m.roughness=.9;
+    if(/leaves/.test(m.name)){m.alphaMap=alpha;m.transparent=false;m.alphaTest=.45}m.needsUpdate=true})}});
+  scene.add(tree);shoot(scene,0)}
+
+/* ---------- rows 1-3: trees grown in code ---------- */
+function rng(seed){let s=seed%2147483647;if(s<=0)s+=2147483646;return()=>(s=s*16807%2147483647,(s-1)/2147483646)}
+function leafTex(kind,seed){const R=rng(seed);const c=document.createElement('canvas');c.width=c.height=256;const x=c.getContext('2d');
+  if(kind==='willow'){for(let s=0;s<6;s++){const sx=22+s*42+R()*10;x.strokeStyle=`hsl(${85+R()*14},35%,${30+R()*10}%)`;x.lineWidth=2.5;x.beginPath();x.moveTo(sx,0);x.lineTo(sx+R()*8-4,256);x.stroke();
+      for(let k=0;k<34;k++){const y=k*7.5+R()*5,len=16+R()*10,side=k%2?1:-1;x.save();x.translate(sx+(y/256)*(R()*8-4),y);x.rotate(side*(.25+R()*.3));
+        x.fillStyle=`hsl(${82+R()*20},${38+R()*14}%,${30+R()*16}%)`;x.beginPath();x.ellipse(side*4,len/2,5,len/2,0,0,7);x.fill();x.restore()}}}
+  else{const n=kind==='poplar'?90:70;for(let i=0;i<n;i++){const a=R()*6.28,rr=Math.sqrt(R())*100;const px=128+Math.cos(a)*rr,py=128+Math.sin(a)*rr;
+      x.save();x.translate(px,py);x.rotate(R()*6.28);const L=kind==='poplar'?12+R()*6:14+R()*9;
+      x.fillStyle=`hsl(${kind==='poplar'?88+R()*16:95+R()*18},${36+R()*16}%,${22+R()*22}%)`;x.beginPath();x.ellipse(0,0,L*.42,L/2,0,0,7);x.fill();
+      x.strokeStyle='rgba(20,40,10,.35)';x.lineWidth=.8;x.beginPath();x.moveTo(0,-L/2);x.lineTo(0,L/2);x.stroke();x.restore()}}
+  const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;t.generateMipmaps=false;t.minFilter=THREE.LinearFilter;return t}
+const SP={
+  oak:{trunk:3.4,rad:.42,depth:5,kids:[2,3],angle:.78,lenF:.74,radF:.62,up:.18,tips:7,leafR:1.3,card:1.7,main:.7,droop:0},
+  poplar:{trunk:1.6,rad:.3,depth:6,kids:[2,3],angle:.42,lenF:.8,radF:.66,up:.72,tips:6,leafR:.9,card:1.25,main:.95,droop:0,leafFrom:1},
+  willow:{trunk:3.0,rad:.5,depth:4,kids:[3,4],angle:.85,lenF:.78,radF:.6,up:.3,tips:0,leafR:0,card:0,main:.6,droop:.35,strands:5}};
+function grow(sp,seed){const R=rng(seed);const bark=[],cards=[],strands=[];const up=new THREE.Vector3(0,1,0);
+  const cyl=(a,b,r0,r1)=>{const d=new THREE.Vector3().subVectors(b,a);const L=d.length();const g=new THREE.CylinderGeometry(r1,r0,L,6,1,true);g.translate(0,L/2,0);
+    g.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(up,d.clone().normalize()));g.translate(a.x,a.y,a.z);bark.push(g)};
+  const rnd3=()=>new THREE.Vector3(R()*2-1,R()*2-1,R()*2-1);
+  function br(p,dir,len,rad,depth){dir=dir.clone();if(sp.droop&&depth>=2)dir.y-=sp.droop*(depth-1)*.35;dir.normalize();
+    const e=p.clone().addScaledVector(dir,len);cyl(p,e,rad,rad*.72);
+    if(depth>=sp.depth||len<.35){
+      if(sp.strands){for(let i=0;i<sp.strands;i++){const o=e.clone().add(rnd3().multiplyScalar(1.1));o.y=Math.max(o.y,e.y-.3);strands.push([o,1.8+R()*3.2,R()*6.28])}}
+      else for(let i=0;i<sp.tips;i++){const o=e.clone().add(rnd3().multiplyScalar(sp.leafR));cards.push([o,sp.card*(.7+R()*.6)])}
+      return}
+    if(!sp.strands&&depth>=(sp.leafFrom??sp.depth-2))for(let i=0;i<(sp.leafFrom?4:2);i++){const o=p.clone().addScaledVector(dir,len*R()).add(rnd3().multiplyScalar(sp.leafR*.8));cards.push([o,sp.card*(.6+R()*.5)])}
+    const n=sp.kids[0]+Math.floor(R()*(sp.kids[1]-sp.kids[0]+1));
+    for(let i=0;i<n;i++){const axis=new THREE.Vector3().crossVectors(dir,rnd3()).normalize();const nd=dir.clone().applyAxisAngle(axis,sp.angle*(.65+R()*.7));
+      nd.lerp(up,sp.up).normalize();br(e,nd,len*sp.lenF*(.8+R()*.4),rad*sp.radF,depth+1)}
+    if(R()<sp.main){const nd=dir.clone().add(rnd3().multiplyScalar(.15)).lerp(up,sp.up*.5).normalize();br(e,nd,len*sp.lenF*.95,rad*.74,depth+1)}}
+  br(new THREE.Vector3(0,0,0),new THREE.Vector3(0,1,0),sp.trunk,sp.rad,0);
+  const g=new THREE.Group();g.name='tree';
+  g.add(new THREE.Mesh(mergeGeometries(bark),new THREE.MeshStandardMaterial({color:0x5b4a3a,roughness:.95})));
+  const tex=leafTex(sp.strands?'willow':(sp===SP.poplar?'poplar':'oak'),seed*3+1);
+  const lm=new THREE.MeshStandardMaterial({map:tex,alphaTest:.5,side:THREE.DoubleSide,roughness:.85});
+  const D=new THREE.Object3D();
+  if(cards.length){const im=new THREE.InstancedMesh(new THREE.PlaneGeometry(1,1),lm,cards.length);
+    cards.forEach(([o,s],i)=>{D.position.copy(o);D.rotation.set(R()*6.28,R()*6.28,R()*6.28);D.scale.setScalar(s);D.updateMatrix();im.setMatrixAt(i,D.matrix)});g.add(im)}
+  if(strands.length){const sg=new THREE.PlaneGeometry(1.1,1);sg.translate(0,-.5,0);const im=new THREE.InstancedMesh(sg,lm,strands.length*2);
+    strands.forEach(([o,L,a],i)=>{for(let k=0;k<2;k++){D.position.copy(o);D.rotation.set(0,a+k*1.57,0);D.scale.set(1,L,1);D.updateMatrix();im.setMatrixAt(i*2+k,D.matrix)}});g.add(im)}
+  return g}
+let row=1;
+for(const [k,seed] of [['oak',11],['poplar',23],['willow',37]]){const scene=new THREE.Scene();lights(scene);scene.add(grow(SP[k],seed));shoot(scene,row++)}
+window.__bake={png:out.toDataURL('image/png'),meta};
+</script></body></html>

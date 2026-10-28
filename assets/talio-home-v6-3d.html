@@ -1,0 +1,1730 @@
+<title>Talio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Young+Serif&family=Figtree:wght@400;500;600&display=swap">
+<style>
+/* Talio Home: the low-res 3D pond retreat fills the screen; the product UI sits on top at native resolution.
+   Panels and sheets use warm paper; controls over the scene use frosted paper chips so they read in every time of day. */
+:root{
+  --paper:#f6f3ec;--paper-2:#ede8dd;--paper-3:#e4ddcf;
+  --ink:#2a2924;--ink-2:#5c584e;--ink-3:#8a8579;--line:rgba(42,41,36,.12);--line-2:rgba(42,41,36,.2);
+  --olive:#2e3529;--olive-ink:#f4f1e8;--accent:#b8642e;--danger:#a4442c;
+  --frost:rgba(247,244,237,.84);--frost-line:rgba(255,255,255,.55);
+  --shadow:0 18px 50px rgba(20,18,12,.24);--shadow-s:0 6px 20px rgba(20,18,12,.18);
+  --serif:"Young Serif",Georgia,serif;--ui:"Figtree",system-ui,-apple-system,sans-serif;--write:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
+  --ground:#1a1f22;--panel-w:min(410px,calc(100vw - 32px));
+  --sa-t:env(safe-area-inset-top,0px);--sa-b:env(safe-area-inset-bottom,0px);--sa-l:env(safe-area-inset-left,0px);--sa-r:env(safe-area-inset-right,0px);
+  --kb:0px;color-scheme:light;
+}
+/* The world brings its own light; the interface keeps one warm paper palette in both themes on purpose. */
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--ground:#1a1f22}}
+:root[data-theme="dark"]{--ground:#1a1f22}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;overflow:hidden;overscroll-behavior:none}
+[hidden]{display:none!important}
+body{background:var(--ground);color:var(--ink);font:15px/1.45 var(--ui);-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
+button{font:inherit;color:inherit}
+button:focus-visible,input:focus-visible,textarea:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+#view{position:fixed;display:block;image-rendering:pixelated;z-index:0}
+#nogl{position:fixed;inset:0;display:grid;place-items:center;padding:24px;text-align:center;color:#eee}
+.icon{width:40px;height:40px;border-radius:999px;border:1px solid var(--frost-line);background:var(--frost);display:grid;place-items:center;cursor:pointer;box-shadow:var(--shadow-s);
+  -webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);padding:0}
+.icon svg{width:18px;height:18px}
+.icon:hover{background:#fbf9f4}
+#soundBtn[aria-pressed="false"] .on,#soundBtn[aria-pressed="true"] .off{display:none}
+
+/* ---------- header ---------- */
+.top{position:fixed;top:0;left:0;right:0;z-index:20;display:grid;grid-template-columns:1fr auto 1fr;align-items:start;gap:12px;
+  padding:calc(18px + var(--sa-t)) calc(22px + var(--sa-r)) 0 calc(24px + var(--sa-l));pointer-events:none;transition:opacity .5s ease,transform .5s ease}
+.top>*{pointer-events:auto}
+.brand{justify-self:start}
+.brand h1{margin:0;font:400 32px/1 var(--serif);color:#fffaf0;text-shadow:0 1px 2px rgba(10,12,8,.45),0 0 18px rgba(10,12,8,.25);letter-spacing:.005em}
+.brand p{margin:6px 0 0;font:600 11px/1.2 var(--ui);letter-spacing:.14em;text-transform:uppercase;color:#fffaf0;text-shadow:0 1px 2px rgba(10,12,8,.55)}
+.tabs{display:flex;gap:4px;padding:5px;border-radius:999px;background:var(--frost);border:1px solid var(--frost-line);box-shadow:var(--shadow-s);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px)}
+.tab{display:flex;align-items:center;gap:8px;border:0;background:none;padding:9px 16px;border-radius:999px;font:500 15px/1 var(--ui);color:var(--ink-2);cursor:pointer;transition:background .25s,color .25s}
+.tab svg{width:16px;height:16px}
+.tab:hover{color:var(--ink)}
+.tab[aria-current="page"]{background:var(--olive);color:var(--olive-ink)}
+.tools{justify-self:end;display:flex;gap:8px}
+body[data-focus="journal"] .top,body[data-focus="journal"] .dock,body[data-focus="journal"] .bottomnav,body[data-focus="journal"] #devChip{opacity:0;pointer-events:none}
+body[data-focus="journal"] .top{transform:translateY(-12px)}
+
+/* ---------- home dock ---------- */
+.dock{position:fixed;left:50%;bottom:calc(26px + var(--sa-b));z-index:15;transform:translateX(calc(-50% - var(--dock-shift,0px)));
+  display:flex;flex-direction:column;align-items:center;gap:10px;transition:opacity .45s ease,transform .6s cubic-bezier(.2,.8,.2,1)}
+.dock-q{margin:0;font:400 19px/1.25 var(--serif);color:#fffaf0;text-shadow:0 1px 2px rgba(10,12,8,.6),0 0 10px rgba(10,12,8,.45),0 0 24px rgba(10,12,8,.3);text-align:center}
+.dock-row{display:flex;align-items:center;gap:8px;padding:6px;border-radius:999px;background:var(--frost);border:1px solid var(--frost-line);box-shadow:var(--shadow);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px)}
+.start{display:flex;align-items:center;gap:9px;border:0;border-radius:999px;padding:12px 22px;font:600 15px/1 var(--ui);cursor:pointer;background:transparent;color:var(--ink);transition:background .2s}
+.start svg{width:17px;height:17px}
+.start:hover{background:rgba(42,41,36,.06)}
+.start[data-primary="true"]{background:var(--olive);color:var(--olive-ink)}
+.sep{width:1px;height:24px;background:var(--line-2);margin-inline:2px}
+.cust{position:relative;display:flex;align-items:center;gap:8px;border:0;border-radius:999px;padding:12px 16px;background:none;cursor:pointer;font:500 14px/1 var(--ui);color:var(--ink-2)}
+.cust:hover{background:rgba(42,41,36,.06);color:var(--ink)}
+.cust svg{width:17px;height:17px}
+.dotnew{position:absolute;top:8px;right:9px;width:8px;height:8px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 2px var(--paper)}
+body[data-sheet="customize"] .dock,body[data-sheet] .dock-q{opacity:0;pointer-events:none}
+
+/* ---------- side panel (desktop) / sheet (mobile) ---------- */
+.sheet{position:fixed;z-index:30;top:calc(84px + var(--sa-t));right:calc(18px + var(--sa-r));bottom:18px;width:var(--panel-w);
+  background:color-mix(in srgb,var(--paper) 97%,transparent);border:1px solid rgba(255,255,255,.6);border-radius:22px;box-shadow:var(--shadow);
+  display:flex;flex-direction:column;overflow:hidden;transform:translateX(calc(100% + 40px));transition:transform .55s cubic-bezier(.2,.8,.2,1),visibility 0s .55s;visibility:hidden}
+body[data-sheet] .sheet{transform:none;visibility:visible;transition:transform .55s cubic-bezier(.2,.8,.2,1),visibility 0s}
+.grip{display:none}
+.page{display:none;flex:1;min-height:0;flex-direction:column}
+.sheet[data-page="memories"] #pg-memories,.sheet[data-page="tasks"] #pg-tasks,.sheet[data-page="settings"] #pg-settings,.sheet[data-page="customize"] #pg-customize{display:flex}
+.phead{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:22px 22px 12px}
+.phead h2{margin:0;font:400 30px/1.1 var(--serif);color:var(--ink)}
+.phead .sub{margin:6px 0 0;font-size:13px;color:var(--ink-3)}
+.close{width:36px;height:36px;border-radius:50%;border:1px solid var(--line);background:#fff;display:grid;place-items:center;cursor:pointer;flex:none}
+.close svg{width:14px;height:14px}
+.pbody{flex:1;min-height:0;overflow-y:auto;padding:4px 22px 26px;overscroll-behavior:contain;scrollbar-width:thin}
+.pbody::-webkit-scrollbar{width:6px}.pbody::-webkit-scrollbar-thumb{background:var(--line-2);border-radius:3px}
+.tools-row{padding:0 22px 12px;display:flex;flex-direction:column;gap:10px}
+.search{display:flex;align-items:center;gap:9px;padding:0 14px;height:44px;border-radius:12px;border:1px solid var(--line-2);background:#fff}
+.search svg{width:16px;height:16px;color:var(--ink-3);flex:none}
+.search input{flex:1;border:0;outline:0;background:none;font:15px var(--ui);color:var(--ink);min-width:0}
+.search input::placeholder{color:var(--ink-3)}
+.chips{display:flex;gap:6px}
+.chipbtn{border:1px solid transparent;background:var(--paper-2);color:var(--ink-2);border-radius:999px;padding:7px 14px;font:500 13.5px/1 var(--ui);cursor:pointer}
+.chipbtn[aria-pressed="true"]{background:var(--olive);color:var(--olive-ink)}
+.month{margin:14px 0 6px;font:600 11.5px/1 var(--ui);letter-spacing:.16em;text-transform:uppercase;color:var(--ink-3)}
+.feed{list-style:none;margin:0;padding:0 0 0 14px;border-left:1.5px solid var(--line)}
+.feed li{position:relative}
+.feed li::before{content:"";position:absolute;left:-19.5px;top:21px;width:8px;height:8px;border-radius:50%;background:var(--paper);border:1.5px solid var(--ink-2)}
+.mem{display:block;width:100%;text-align:left;border:0;background:none;padding:12px 6px 14px 10px;border-radius:12px;cursor:pointer}
+.mem:hover{background:rgba(42,41,36,.04)}
+.mtop{display:flex;justify-content:space-between;gap:10px;font-size:13px;color:var(--ink-3)}
+.mem h3{margin:4px 0 3px;font:600 17px/1.3 var(--ui);color:var(--ink)}
+.prev{margin:0;color:var(--ink-2);font-size:14.5px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.mmeta{display:flex;gap:8px;margin-top:7px;font-size:12px;color:var(--ink-3)}
+.tag{border:1px solid var(--line-2);border-radius:999px;padding:2px 8px;font-size:11.5px;color:var(--ink-2)}
+mark{background:rgba(212,160,70,.32);color:inherit;border-radius:3px;padding:0 1px}
+.mood{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.mood i{width:8px;height:8px;border-radius:50%;background:var(--m,#8a8579)}
+.empty{padding:26px 6px;color:var(--ink-2);font-size:14.5px}
+.empty strong{display:block;font:400 19px/1.3 var(--serif);color:var(--ink);margin-bottom:6px}
+.btn{border:1px solid var(--line-2);background:#fff;border-radius:999px;padding:10px 16px;font:600 14px/1 var(--ui);cursor:pointer;color:var(--ink)}
+.btn:hover{background:var(--paper-2)}
+.btn.solid{background:var(--olive);color:var(--olive-ink);border-color:transparent}
+.btn.danger{color:var(--danger)}
+.btn.danger.solid{background:var(--danger);color:#fff}
+.btn.small{padding:8px 13px;font-size:13px}
+/* detail */
+.back{display:inline-flex;align-items:center;gap:6px;border:0;background:none;color:var(--ink-2);font:500 14px/1 var(--ui);cursor:pointer;padding:6px 0}
+.back svg{width:14px;height:14px}
+.dmeta{display:flex;flex-wrap:wrap;gap:6px 12px;font-size:13px;color:var(--ink-3);margin:6px 0 4px}
+.dtitle{margin:10px 0 2px;font:400 26px/1.2 var(--serif)}
+.dh{margin:20px 0 6px;font:600 11.5px/1 var(--ui);letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3)}
+.dbody{margin:0;font:17px/1.6 var(--write);color:var(--ink);white-space:pre-wrap}
+.drefl{margin:0;font-size:15px;color:var(--ink-2);padding-left:12px;border-left:2px solid var(--paper-3)}
+.dctx{font-size:13.5px;color:var(--ink-2)}
+.einput,.earea{display:block;width:100%;box-sizing:border-box;border:1px solid var(--line-2);border-radius:12px;padding:10px 12px;background:#fff;color:var(--ink);outline:none}
+.einput:focus,.earea:focus{border-color:var(--olive)}
+.einput{font:400 22px/1.25 var(--serif)}
+.earea{font:17px/1.55 var(--write);min-height:5.5em;resize:vertical}
+label.dh{display:block}
+.dact{display:flex;gap:8px;margin-top:22px;flex-wrap:wrap}
+.confirm{margin-top:12px;padding:14px;border-radius:14px;background:var(--paper-2)}
+.confirm p{margin:0 0 10px;font-size:14px}
+.confirm .row{display:flex;gap:8px;justify-content:flex-end}
+/* tasks */
+.tlist{list-style:none;margin:0;padding:0}
+.trow{display:flex;align-items:flex-start;gap:12px;padding:12px 2px;border-bottom:1px solid var(--line)}
+.trow label{flex:1;display:flex;gap:12px;align-items:flex-start;cursor:pointer;min-width:0}
+.check{appearance:none;-webkit-appearance:none;flex:none;width:22px;height:22px;margin:1px 0 0;border-radius:7px;border:1.5px solid var(--ink-3);background:#fff;cursor:pointer;display:grid;place-items:center;transition:background .2s,border-color .2s}
+.check:checked{background:var(--olive);border-color:var(--olive)}
+.check:checked::after{content:"";width:10px;height:6px;border-left:2px solid #fff;border-bottom:2px solid #fff;transform:translateY(-1px) rotate(-45deg)}
+.ttxt{display:block;font-size:16px;color:var(--ink)}
+.trow.done .ttxt{color:var(--ink-3);text-decoration:line-through}
+.src{display:inline;border:0;background:none;padding:0;margin-top:3px;font:13px/1.35 var(--ui);color:var(--ink-3);text-decoration:underline;text-decoration-color:var(--line-2);text-underline-offset:3px;cursor:pointer;text-align:left}
+.src:hover{color:var(--ink-2)}
+.x{flex:none;width:32px;height:32px;border:0;border-radius:50%;background:none;color:var(--ink-3);display:grid;place-items:center;cursor:pointer}
+.x:hover{background:var(--paper-2);color:var(--ink)}
+.x svg{width:13px;height:13px}
+.group-h{display:flex;justify-content:space-between;align-items:baseline;margin:10px 0 2px}
+.group-h h3{margin:0;font:600 11.5px/1 var(--ui);letter-spacing:.16em;text-transform:uppercase;color:var(--ink-3)}
+.group-h span{font-size:12.5px;color:var(--ink-3)}
+details.donebox summary{cursor:pointer;list-style:none;margin-top:20px;font:600 11.5px/1 var(--ui);letter-spacing:.16em;text-transform:uppercase;color:var(--ink-3)}
+details.donebox summary::-webkit-details-marker{display:none}
+/* settings */
+.sgroup{margin:6px 0 22px}
+.sgroup>h3{margin:4px 0 10px;font:600 11.5px/1 var(--ui);letter-spacing:.16em;text-transform:uppercase;color:var(--ink-3)}
+.sl{margin:0 0 8px;font:600 16px/1.3 var(--ui)}
+.radio{display:flex;gap:12px;align-items:flex-start;padding:13px 14px;border:1px solid var(--line-2);border-radius:14px;margin-bottom:8px;cursor:pointer;background:#fff}
+.radio:has(input:checked){background:var(--paper-2);border-color:var(--ink-3)}
+.radio input{margin:3px 0 0;accent-color:var(--olive);width:16px;height:16px}
+.radio b{display:block;font-weight:600;font-size:15.5px}
+.radio span{display:block;color:var(--ink-2);font-size:14px}
+.seg{display:inline-flex;flex-wrap:wrap;gap:4px;padding:4px;border-radius:999px;background:var(--paper-2)}
+.seg button{border:0;background:none;border-radius:999px;padding:9px 15px;font:500 14px/1 var(--ui);color:var(--ink-2);cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--olive);color:var(--olive-ink)}
+.toggle-row{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:12px 0;border-top:1px solid var(--line)}
+.toggle-row b{display:block;font-weight:600;font-size:15.5px}
+.toggle-row span{display:block;color:var(--ink-2);font-size:13.5px}
+.switch{flex:none;width:46px;height:28px;border-radius:999px;border:0;background:var(--paper-3);position:relative;cursor:pointer;transition:background .2s}
+.switch::after{content:"";position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.2);transition:transform .2s}
+.switch[aria-checked="true"]{background:var(--olive)}
+.switch[aria-checked="true"]::after{transform:translateX(18px)}
+.note{font-size:13.5px;color:var(--ink-2);margin:0 0 10px}
+/* customize */
+.slot{margin:4px 0 20px}
+.slot h3{margin:0 0 10px;font:600 11.5px/1 var(--ui);letter-spacing:.16em;text-transform:uppercase;color:var(--ink-3)}
+.opts{display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:8px}
+.opt{position:relative;display:flex;flex-direction:column;gap:7px;align-items:flex-start;text-align:left;padding:11px 12px;border-radius:14px;border:1px solid var(--line-2);background:#fff;cursor:pointer;min-height:64px}
+.opt:hover:not(:disabled){border-color:var(--ink-3)}
+.opt[aria-pressed="true"]{border-color:var(--olive);box-shadow:inset 0 0 0 1.5px var(--olive);background:var(--paper)}
+.opt:disabled{cursor:default;background:var(--paper-2);border-style:dashed}
+.opt b{font:600 14px/1.25 var(--ui)}
+.opt small{font-size:12px;color:var(--ink-3)}
+.sw{display:flex;gap:0;border-radius:6px;overflow:hidden;height:16px;width:46px;box-shadow:inset 0 0 0 1px rgba(0,0,0,.08)}
+.sw i{flex:1}
+.opt .new{position:absolute;bottom:10px;right:11px;font:600 10px/1 var(--ui);letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
+.opt .lock{display:inline-flex;align-items:center;gap:5px}
+.opt .lock svg{width:11px;height:11px}
+.progress{padding:14px 16px;border-radius:14px;background:var(--paper-2);font-size:14px;color:var(--ink-2);margin-bottom:18px}
+.progress b{color:var(--ink)}
+
+/* ---------- mobile bottom nav ---------- */
+.bottomnav{display:none}
+
+/* ---------- journal focus (inside the RV) ---------- */
+.journal{position:fixed;left:0;right:0;bottom:var(--kb);z-index:25;display:flex;justify-content:center;padding:0 16px calc(18px + var(--sa-b));pointer-events:none;
+  transform:translateY(115%);transition:transform .8s cubic-bezier(.2,.8,.2,1),bottom .25s ease}
+body[data-journal="up"] .journal{transform:none}
+.jcard{pointer-events:auto;width:min(580px,100%);max-height:min(66vh,620px);overflow-y:auto;background:color-mix(in srgb,var(--paper) 96%,transparent);color:var(--ink);border-radius:22px;
+  padding:16px 20px 16px;box-shadow:0 22px 60px rgba(10,6,4,.42);display:flex;flex-direction:column;gap:12px;overscroll-behavior:contain}
+.jhead{display:flex;justify-content:space-between;align-items:center;gap:10px;font:600 11.5px/1 var(--ui);letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3)}
+.linkbtn{border:0;background:none;padding:6px 2px;font:500 13.5px/1 var(--ui);letter-spacing:0;text-transform:none;color:var(--ink-2);cursor:pointer;text-decoration:underline;text-decoration-color:var(--line-2);text-underline-offset:3px}
+.linkbtn:hover{color:var(--ink)}
+.linkbtn.danger{color:var(--danger)}
+.st{display:none;flex-direction:column;gap:12px}
+.jcard[data-state="talk"] .st-talk,.jcard[data-state="write"] .st-write,.jcard[data-state="thinking"] .st-thinking,.jcard[data-state="reflect"] .st-reflect,.jcard[data-state="saved"] .st-saved{display:flex}
+.jq{margin:0;font:400 22px/1.25 var(--serif);color:var(--ink);text-wrap:balance}
+.jrow{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.jrow .right{display:flex;gap:8px;margin-left:auto}
+.listen{display:flex;align-items:center;gap:14px;padding:6px 0}
+.wave{display:flex;gap:4px;align-items:center;height:28px}
+.wave i{width:4px;height:28px;border-radius:3px;background:var(--accent);transform:scaleY(.18);transform-origin:center;transition:transform .08s linear}
+.timer{font:500 15px/1 var(--ui);color:var(--ink-2);font-variant-numeric:tabular-nums}
+.fine{margin:0;font-size:12.5px;color:var(--ink-3)}
+.live{margin:0;max-height:7.5em;overflow-y:auto;font:17px/1.5 var(--write);color:var(--ink-2)}
+.vmsg{padding:12px 14px;border-radius:14px;background:var(--paper-2);display:flex;flex-direction:column;gap:8px}
+.vmsg p{margin:0;font-size:14.5px;color:var(--ink)}
+#jText{width:100%;resize:none;border:0;background:transparent;color:var(--ink);font:18px/1.55 var(--write);min-height:6.2em;max-height:40vh;padding:0;outline:none;
+  background-image:linear-gradient(transparent calc(1.55em - 1px),var(--line) 0);background-size:100% 1.55em;background-attachment:local}
+#jText::placeholder{color:var(--ink-3)}
+.thinking{margin:4px 0;font:400 20px/1.3 var(--serif);color:var(--ink-2)}
+.thinking span{display:inline-block;animation:breathe 1.6s ease-in-out infinite}
+@keyframes breathe{50%{opacity:.35}}
+.rtitle{margin:0;font:400 23px/1.2 var(--serif)}
+.rtext{margin:0;font-size:16px;color:var(--ink);line-height:1.5}
+.support{padding:12px 14px;border-radius:14px;background:#efe8da;border:1px solid var(--line);font-size:14px;color:var(--ink)}
+.support p{margin:0 0 6px}.support p:last-child{margin:0}
+.follow{padding:12px 14px;border-radius:14px;background:var(--paper-2);display:flex;flex-direction:column;gap:10px}
+.follow p{margin:0;font:400 17px/1.35 var(--serif)}
+.caught{margin:0;font:600 11.5px/1 var(--ui);letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3)}
+.rtasks{list-style:none;margin:6px 0 0;padding:0}
+.rtasks li{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line);font-size:15px}
+.rtasks li::before{content:"";flex:none;width:16px;height:16px;border-radius:5px;border:1.5px solid var(--ink-3)}
+.rtasks li span{flex:1}
+.rtasks li .merged{flex:none;font-size:12px;color:var(--ink-3)}
+.rtasks li.leaving{opacity:0;transform:translateX(10px);transition:opacity .25s,transform .25s}
+.saved{display:flex;align-items:center;gap:10px;margin:6px 0;font:400 22px/1.2 var(--serif)}
+.saved svg{width:22px;height:22px;color:var(--olive)}
+.dmore{margin-top:18px;padding-top:14px;border-top:1px dashed var(--line-2)}
+.dmore .dh{margin-top:0}
+.dmore .drefl{margin-top:10px}
+
+/* ---------- toast (calm unlock note) ---------- */
+.toast{position:fixed;left:50%;top:calc(92px + var(--sa-t));z-index:40;transform:translate(-50%,-12px);opacity:0;pointer-events:none;transition:opacity .5s ease,transform .5s ease;
+  display:flex;align-items:center;gap:14px;padding:12px 12px 12px 18px;border-radius:18px;background:var(--paper);box-shadow:var(--shadow);max-width:calc(100vw - 32px)}
+.toast[data-show="true"]{opacity:1;transform:translate(-50%,0);pointer-events:auto}
+.toast .tt{display:flex;flex-direction:column;gap:2px;min-width:0}
+.toast .tt small{font:600 11px/1 var(--ui);letter-spacing:.14em;text-transform:uppercase;color:var(--accent)}
+.toast .tt b{font:600 15px/1.3 var(--ui)}
+.toast .tt small,.toast .btn{white-space:nowrap}
+.resurf{max-width:min(460px,calc(100vw - 32px))}
+.resurf .tt span{font-size:13.5px;color:var(--ink-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.resurf .tt small{color:var(--olive)}
+.jcard[data-state="saved"] #jLeave,.jcard[data-state="thinking"] #jLeave{visibility:hidden}
+
+/* ---------- developer controls (temporary, deliberately unlike the product UI) ---------- */
+#devChip{position:fixed;left:calc(16px + var(--sa-l));bottom:calc(16px + var(--sa-b));z-index:35;transition:opacity .4s}
+#devChip>summary{list-style:none;cursor:pointer;font:600 10.5px/1 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.12em;text-transform:uppercase;color:#e9e4d6;
+  background:rgba(18,20,24,.72);border:1px dashed rgba(233,228,214,.4);border-radius:8px;padding:8px 10px;width:max-content}
+#devChip>summary::-webkit-details-marker{display:none}
+.devp{position:absolute;left:0;bottom:calc(100% + 8px);width:min(330px,calc(100vw - 32px));max-height:min(70vh,560px);overflow-y:auto;padding:12px;border-radius:12px;background:rgba(18,20,24,.9);color:#e9e4d6;
+  border:1px dashed rgba(233,228,214,.35);font:12px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace;display:flex;flex-direction:column;gap:10px;-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+.devp h4{margin:0;font:600 10.5px/1 ui-monospace,monospace;letter-spacing:.12em;text-transform:uppercase;color:#b9b2a0}
+.devp .dseg{display:flex;flex-wrap:wrap;gap:4px}
+.devp button{font:500 11.5px/1 ui-monospace,monospace;border:1px solid rgba(233,228,214,.25);background:none;color:#e9e4d6;border-radius:6px;padding:6px 8px;cursor:pointer}
+.devp button[aria-pressed="true"]{background:#e9e4d6;color:#16181c}
+.devp p{margin:0;color:#b9b2a0}
+
+/* ---------- portrait / small screens ---------- */
+@media (max-width:760px){
+  .top{grid-template-columns:1fr auto;padding:calc(14px + var(--sa-t)) calc(14px + var(--sa-r)) 0 calc(18px + var(--sa-l))}
+  .top .tabs{display:none}
+  .brand h1{font-size:27px}
+  .brand p{font-size:10.5px}
+  .icon{width:38px;height:38px}
+  .bottomnav{position:fixed;left:0;right:0;bottom:0;z-index:32;display:flex;justify-content:space-around;padding:8px 10px calc(8px + var(--sa-b));background:var(--paper);border-top:1px solid var(--line);transition:opacity .4s,transform .5s}
+  .bottomnav .tab{flex:1;flex-direction:column;gap:4px;padding:8px 4px;font-size:12px;border-radius:14px;justify-content:center}
+  .bottomnav .tab svg{width:20px;height:20px}
+  body[data-focus="journal"] .bottomnav{transform:translateY(100%)}
+  .dock{bottom:calc(82px + var(--sa-b));width:calc(100% - 28px);transform:translateX(-50%)}
+  .dock-q{font-size:18px}
+  .dock-row{width:100%;justify-content:space-between}
+  .start{flex:1;justify-content:center;padding:13px 10px}
+  .cust{padding:12px 12px}
+  .cust .lbl{display:none}
+  .sheet{left:0;right:0;width:auto;top:calc(76px + var(--sa-t));bottom:calc(64px + var(--sa-b));border-radius:22px 22px 0 0;border:0;transform:translateY(110%);background:var(--paper)}
+  body[data-sheet] .dock,body[data-sheet] #devChip{opacity:0;pointer-events:none}
+  .sheet[data-page="customize"]{top:auto;height:min(54vh,470px)}
+  .grip{display:block;width:40px;height:5px;border-radius:3px;background:var(--line-2);margin:8px auto 0;flex:none}
+  .phead{padding:14px 18px 10px}.phead h2{font-size:26px}
+  .pbody{padding:4px 18px 22px}.tools-row{padding:0 18px 10px}
+  .journal{padding:0 10px calc(10px + var(--sa-b))}
+  .jcard{border-radius:20px;max-height:min(56vh,560px);padding:14px 16px 14px}
+  .jq{font-size:20px}
+  #devChip{left:auto;right:calc(14px + var(--sa-r));top:calc(62px + var(--sa-t));bottom:auto}
+  .devp{left:auto;right:0;bottom:auto;top:calc(100% + 8px)}
+  .toast{top:auto;bottom:calc(150px + var(--sa-b));width:calc(100vw - 28px)}
+  .toast .tt{flex:1}
+  .brand p{max-width:60vw;line-height:1.35}
+}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{transition-duration:.01s!important;animation:none!important}}
+body[data-motion="reduced"] *,body[data-motion="reduced"] *::before,body[data-motion="reduced"] *::after{transition-duration:.01s!important;animation:none!important}
+</style>
+
+<canvas id="view" role="img" aria-label="A small pixelated 3D pond retreat seen from above: a vintage camper van beside a pond with a dock, reeds, rocks and autumn trees."></canvas>
+<div id="nogl" hidden>Talio needs WebGL, which isn’t available in this browser.</div>
+
+<header class="top">
+  <div class="brand"><h1>Talio</h1><p id="place">Pond retreat</p></div>
+  <nav class="tabs" aria-label="Sections">
+    <button class="tab" type="button" data-tab="home" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9.5h13V10"/></svg>Home</button>
+    <button class="tab" type="button" data-tab="memories"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="3.5" width="14" height="17" rx="2"/><path d="M9 8h6M9 12h6M9 16h3"/></svg>Memories</button>
+    <button class="tab" type="button" data-tab="tasks"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="5" width="4" height="4" rx="1"/><path d="M11 7h9"/><rect x="4" y="14" width="4" height="4" rx="1"/><path d="M11 16h9"/></svg>Tasks</button>
+  </nav>
+  <div class="tools">
+    <button class="icon" id="soundBtn" type="button" aria-pressed="false" aria-label="Turn sound on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9.5h3.5L12 6v12l-4.5-3.5H4z"/><path class="on" d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/><path class="off" d="m16 9.5 5 5m0-5-5 5"/></svg></button>
+    <button class="icon" id="gearBtn" type="button" aria-label="Settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2.8v2.4M12 18.8v2.4M2.8 12h2.4M18.8 12h2.4M5.5 5.5l1.7 1.7M16.8 16.8l1.7 1.7M5.5 18.5l1.7-1.7M16.8 7.2l1.7-1.7"/></svg></button>
+  </div>
+</header>
+
+<div class="dock" id="dock">
+  <p class="dock-q" id="dockQ">How did today go?</p>
+  <div class="dock-row">
+    <button class="start" type="button" data-start="talk"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/></svg>Talk</button>
+    <button class="start" type="button" data-start="write"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="m13.5 6.5 4 4"/></svg>Write</button>
+    <span class="sep" aria-hidden="true"></span>
+    <button class="cust" type="button" id="custBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 16.5V9.5a2 2 0 0 1 2-2h10.5l3.5 4v5"/><path d="M3 16.5h18"/><circle cx="7.5" cy="17.5" r="1.8"/><circle cx="16.5" cy="17.5" r="1.8"/><path d="M7 7.5V5h5"/></svg><span class="lbl">Customize RV</span><i class="dotnew" id="custDot" hidden></i></button>
+  </div>
+</div>
+
+<nav class="bottomnav" aria-label="Sections">
+  <button class="tab" type="button" data-tab="home" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9.5h13V10"/></svg>Home</button>
+  <button class="tab" type="button" data-tab="memories"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="3.5" width="14" height="17" rx="2"/><path d="M9 8h6M9 12h6M9 16h3"/></svg>Memories</button>
+  <button class="tab" type="button" data-tab="tasks"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="5" width="4" height="4" rx="1"/><path d="M11 7h9"/><rect x="4" y="14" width="4" height="4" rx="1"/><path d="M11 16h9"/></svg>Tasks</button>
+</nav>
+
+<aside class="sheet" id="sheet" aria-label="Panel">
+  <div class="grip" aria-hidden="true"></div>
+  <section class="page" id="pg-memories" aria-labelledby="memH">
+    <div id="memList" style="display:contents">
+      <div class="phead"><div><h2 id="memH">Memories</h2></div><button class="close" type="button" data-close aria-label="Close Memories"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M3 3l8 8M11 3l-8 8"/></svg></button></div>
+      <div class="tools-row">
+        <label class="search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg><input id="memSearch" type="search" placeholder="Search your memories…" aria-label="Search memories" autocomplete="off"></label>
+        <div class="chips" role="group" aria-label="Filter"><button class="chipbtn" type="button" data-filter="all" aria-pressed="true">All</button><button class="chipbtn" type="button" data-filter="archived" aria-pressed="false">Archived</button></div>
+      </div>
+      <div class="pbody" id="memBody"></div>
+    </div>
+    <div id="memDetail" style="display:none">
+      <div class="phead"><button class="back" type="button" id="detailBack"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 2.5 4.5 7 9 11.5"/></svg>Memories</button><button class="close" type="button" data-close aria-label="Close Memories"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M3 3l8 8M11 3l-8 8"/></svg></button></div>
+      <div class="pbody" id="detailBody"></div>
+    </div>
+  </section>
+  <section class="page" id="pg-tasks" aria-labelledby="tasksH">
+    <div class="phead"><div><h2 id="tasksH">Tasks</h2><p class="sub" id="tasksSub"></p></div><button class="close" type="button" data-close aria-label="Close Tasks"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M3 3l8 8M11 3l-8 8"/></svg></button></div>
+    <div class="pbody" id="tasksBody"></div>
+  </section>
+  <section class="page" id="pg-settings" aria-labelledby="setH">
+    <div class="phead"><div><h2 id="setH">Settings</h2></div><button class="close" type="button" data-close aria-label="Close Settings"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M3 3l8 8M11 3l-8 8"/></svg></button></div>
+    <div class="pbody">
+      <section class="sgroup"><h3>Journal</h3>
+        <p class="sl">Reflection style</p>
+        <label class="radio"><input type="radio" name="rstyle" value="minimal"><span><b>Minimal</b><span>Talio mostly listens and keeps reflections very short.</span></span></label>
+        <label class="radio"><input type="radio" name="rstyle" value="curious"><span><b>Curious</b><span>Talio sometimes asks one optional follow-up question.</span></span></label>
+        <label class="radio"><input type="radio" name="rstyle" value="deeper"><span><b>Go Deeper</b><span>Talio regularly offers a thoughtful prompt to keep reflecting.</span></span></label>
+        <p class="sl" style="margin-top:16px">Default input</p>
+        <div class="seg" id="setInput" role="group" aria-label="Default input"><button type="button" data-v="talk">Talk</button><button type="button" data-v="write">Write</button><button type="button" data-v="last">Remember last choice</button></div>
+      </section>
+      <section class="sgroup"><h3>Retreat</h3>
+        <div class="toggle-row"><div><b>Sound</b><span>Water, wind and rain, made live in your browser.</span></div><button class="switch" type="button" role="switch" id="setSound" aria-label="Sound"></button></div>
+        <div class="toggle-row"><div><b>Reduced motion</b><span>Holds the camera still and swaps the walk-in for a quick fade.</span></div><button class="switch" type="button" role="switch" id="setMotion" aria-label="Reduced motion"></button></div>
+      </section>
+      <section class="sgroup"><h3>Your data</h3>
+        <p class="note" id="dataNote"></p>
+        <div class="row" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><button class="btn small" type="button" id="backupBtn">Download a backup</button><button class="btn small danger" type="button" id="eraseBtn">Erase all journal data</button></div>
+        <p class="note" id="backupNote" hidden></p>
+        <div class="confirm" id="eraseConfirm" hidden><p>Erase every memory and task, and reset your RV? This can’t be undone.</p><div class="row"><button class="btn small" type="button" id="eraseNo">Cancel</button><button class="btn small danger solid" type="button" id="eraseYes">Erase everything</button></div></div>
+      </section>
+    </div>
+  </section>
+  <section class="page" id="pg-customize" aria-labelledby="custH">
+    <div class="phead"><div><h2 id="custH">Your RV</h2><p class="sub">Journaling opens new options. Nothing ever expires.</p></div><button class="close" type="button" data-close aria-label="Close RV customization"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M3 3l8 8M11 3l-8 8"/></svg></button></div>
+    <div class="pbody" id="custBody"></div>
+  </section>
+</aside>
+
+<section class="journal" id="journal" aria-label="Journal">
+  <div class="jcard" id="jcard" data-state="write">
+    <div class="jhead"><span id="jEyebrow">Monday · Evening</span><button class="linkbtn" type="button" id="jLeave">Step outside</button></div>
+    <div class="st st-talk">
+      <p class="jq" id="jTalkQ">What’s on your mind?</p>
+      <div class="listen"><span class="wave" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span><span class="timer" id="jTimer">0:00</span><span class="fine" id="jListening">Listening…</span></div>
+      <div class="jrow"><button class="linkbtn" type="button" id="jToWrite">Write instead</button><div class="right"><button class="btn solid" type="button" id="jDone">Done</button></div></div>
+      <p class="live" id="jLive" hidden></p>
+      <div class="vmsg" id="jVoiceMsg" hidden><p id="jVoiceMsgT"></p><div class="jrow"><button class="btn small" type="button" id="jVoiceWrite">Use keyboard mic</button><button class="linkbtn" type="button" id="jVoiceRetry">Try again</button><button class="linkbtn" type="button" id="jVoiceSample">Use a sample transcript</button></div></div>
+      <p class="fine" id="jVoiceNote"></p>
+    </div>
+    <div class="st st-write">
+      <label class="jq" for="jText" id="jWriteQ">What’s on your mind?</label>
+      <p class="fine" id="jHeard" hidden>Here’s what I heard. Fix anything before Talio reflects.</p>
+      <textarea id="jText" rows="4" placeholder="Start writing…"></textarea>
+      <div class="jrow" id="jStuckRow" hidden><button class="linkbtn" type="button" id="jStuck">Not sure where to start?</button></div>
+      <p class="fine" id="jDictTip" hidden>Tip: tap the microphone on your keyboard to talk instead of typing.</p>
+      <div class="vmsg" id="jDictMsg" hidden><p id="jDictMsgT"></p></div>
+      <div class="jrow"><button class="linkbtn" type="button" id="jToTalk">Talk instead</button><div class="right"><button class="btn solid" type="button" id="jReflect" disabled>Reflect</button></div></div>
+    </div>
+    <div class="st st-thinking" aria-live="polite"><p class="thinking">Talio is reading this<span>…</span></p><p class="fine" id="jThinkNote"></p><div class="jrow" id="jThinkRow" hidden><button class="linkbtn" type="button" id="jSkipAI">Skip and use a quick reflection</button></div></div>
+    <div class="st st-reflect" aria-live="polite">
+      <h2 class="rtitle" id="rTitle"></h2>
+      <p class="rtext" id="rText"></p>
+      <div class="support" id="rSupport" hidden>
+        <p>If you’re thinking about ending your life or hurting yourself, you deserve support right now. In the US, call or text <b>988</b> to reach the Suicide &amp; Crisis Lifeline, any time.</p>
+        <p>Outside the US, <b>findahelpline.com</b> lists free local lines. If you’re in immediate danger, call your local emergency number.</p>
+      </div>
+      <div class="follow" id="rFollow" hidden><p id="rFollowQ"></p><div class="jrow"><button class="btn small" type="button" id="rMore">Keep writing</button><button class="linkbtn" type="button" id="rEnough">That’s enough for now</button></div></div>
+      <div id="rTasksWrap"><p class="caught" id="rCaught"></p><ul class="rtasks" id="rTasks"></ul></div>
+      <div class="jrow"><button class="linkbtn danger" type="button" id="rDiscard">Discard</button><div class="right"><button class="btn solid" type="button" id="rSave">Save</button></div></div>
+      <p class="fine" id="rSource"></p>
+    </div>
+    <div class="st st-saved" aria-live="polite"><p class="saved"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m8 12.5 2.8 2.8L16.5 9.5"/></svg><span id="savedT">Saved to Memories</span></p><p class="fine" id="savedNote">Stay as long as you like. Anything more you add joins this entry.</p>
+      <div class="jrow"><button class="btn small" type="button" id="sMore">Keep going</button><div class="right"><button class="btn solid" type="button" id="sOut">Head outside</button></div></div></div>
+  </div>
+</section>
+
+<div class="toast resurf" id="resurf" role="status" aria-live="polite"><div class="tt"><small id="resurfWhen">A week ago today</small><b id="resurfTitle"></b><span id="resurfSnip"></span></div><button class="btn small solid" type="button" id="resurfOpen">Read it</button><button class="x" type="button" id="resurfX" aria-label="Dismiss"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M3 3l8 8M11 3l-8 8"/></svg></button></div>
+<div class="toast" id="toast" role="status" aria-live="polite"><div class="tt"><small>New RV option unlocked</small><b id="toastName"></b></div><button class="btn small solid" type="button" id="toastSee">Take a look</button><button class="x" type="button" id="toastX" aria-label="Dismiss"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M3 3l8 8M11 3l-8 8"/></svg></button></div>
+
+<details id="devChip"><summary>Dev</summary><div class="devp" id="devP"></div></details>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.149.0/build/three.min.js"></script>
+<script>
+(()=>{
+'use strict';
+/* ==========================================================================
+   Talio pond retreat — a tiny 3D world rendered at low resolution and
+   scaled up crisply. Exterior: a pond, a dock, a camp, a vintage camper.
+   Interior: a window nook in the camper's rear dinette that looks out over
+   the same pond (real 3D, so destinations can change outside later).
+   ========================================================================== */
+if(!window.THREE){document.getElementById('nogl').hidden=false;return}
+const T3=THREE,cv=document.getElementById('view');
+let renderer;
+try{renderer=new T3.WebGLRenderer({canvas:cv,antialias:false,powerPreference:'high-performance'})}catch(e){document.getElementById('nogl').hidden=false;return}
+const mobile=matchMedia('(pointer:coarse)').matches||Math.min(innerWidth,innerHeight)<600;
+const Q={grass:mobile?520:1100,reeds:mobile?300:560,shadow:mobile?512:1024,rain:mobile?800:1700,refl:mobile?.5:.75};
+renderer.setPixelRatio(1);renderer.shadowMap.enabled=true;renderer.shadowMap.type=T3.BasicShadowMap;
+
+/* ---------- small math + noise ---------- */
+const clamp=(v,a=0,b=1)=>v<a?a:v>b?b:v,lerp=(a,b,t)=>a+(b-a)*t,sstep=(a,b,v)=>{const t=clamp((v-a)/(b-a));return t*t*(3-2*t)};
+const ease=t=>t<.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2,easeOut=t=>1-Math.pow(1-t,3);
+function rng(seed){let a=seed>>>0;return()=>{a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+function h2(x,y){let h=Math.imul(x|0,374761393)+Math.imul(y|0,668265263)|0;h=Math.imul(h^(h>>>13),1274126177);return((h^(h>>>16))>>>0)/4294967296}
+function vn(x,y){const xi=Math.floor(x),yi=Math.floor(y),xf=x-xi,yf=y-yi,u=xf*xf*(3-2*xf),v=yf*yf*(3-2*yf),a=h2(xi,yi),b=h2(xi+1,yi),c=h2(xi,yi+1),d=h2(xi+1,yi+1);return a+(b-a)*u+(c-a)*v+(a-b-c+d)*u*v}
+const fbm=(x,y)=>vn(x,y)*.6+vn(x*2.1+5,y*2.1+3)*.3+vn(x*4.3+9,y*4.3+1)*.1;
+const C=h=>new T3.Color(h);
+
+/* ---------- materials ---------- */
+function toonTex(){const v=[118,160,208,255],d=new Uint8Array(16);v.forEach((x,i)=>d.set([x,x,x,255],i*4));const t=new T3.DataTexture(d,4,1,T3.RGBAFormat);t.minFilter=t.magFilter=T3.NearestFilter;t.needsUpdate=true;return t}
+const GRAD=toonTex();
+const U={time:{value:0},wind:{value:1},lean:{value:0}};
+const toon=(color,o={})=>new T3.MeshToonMaterial({color,gradientMap:GRAD,...o});
+function sway(m,k,hmax){
+  m.onBeforeCompile=sh=>{sh.uniforms.uTime=U.time;sh.uniforms.uWind=U.wind;sh.uniforms.uLean=U.lean;
+    sh.vertexShader='uniform float uTime;uniform float uWind;uniform float uLean;\n'+sh.vertexShader.replace('#include <begin_vertex>',`#include <begin_vertex>
+    #ifdef USE_INSTANCING
+      vec3 ip=vec3(instanceMatrix[3][0],instanceMatrix[3][1],instanceMatrix[3][2]);
+    #else
+      vec3 ip=(modelMatrix*vec4(0.,0.,0.,1.)).xyz;
+    #endif
+      float hh=clamp(position.y/${hmax.toFixed(2)},0.,1.);float ph=ip.x*.8+ip.z*.6;
+      float g=pow(max(0.,sin(uTime*.35-ip.x*.12)),4.);
+      float sw=(sin(uTime*1.3*(0.7+0.3*uWind)+ph)*.55+sin(uTime*2.3+ph*1.9)*.25+g*.9)*uWind+uLean;
+      transformed.x+=sw*hh*hh*${k.toFixed(3)};transformed.z+=sw*.35*hh*hh*${k.toFixed(3)};`)};
+  m.customProgramCacheKey=()=>'sway'+k+'_'+hmax;
+  return m;
+}
+/* merge simple geometries (non-indexed) with a solid colour per part */
+function part(g,color){g=g.index?g.toNonIndexed():g;const n=g.attributes.position.count,c=new Float32Array(n*3),col=C(color);for(let i=0;i<n;i++){c[i*3]=col.r;c[i*3+1]=col.g;c[i*3+2]=col.b}g.setAttribute('color',new T3.BufferAttribute(c,3));if(g.attributes.uv)g.deleteAttribute('uv');return g}
+function merge(parts){let n=0;for(const g of parts)n+=g.attributes.position.count;const P=new Float32Array(n*3),N=new Float32Array(n*3),Cc=new Float32Array(n*3);let o=0;
+  for(const g of parts){g.computeVertexNormals();P.set(g.attributes.position.array,o*3);N.set(g.attributes.normal.array,o*3);Cc.set(g.attributes.color.array,o*3);o+=g.attributes.position.count}
+  const m=new T3.BufferGeometry();m.setAttribute('position',new T3.BufferAttribute(P,3));m.setAttribute('normal',new T3.BufferAttribute(N,3));m.setAttribute('color',new T3.BufferAttribute(Cc,3));return m}
+const box=(w,h,d,x,y,z,col)=>part(new T3.BoxGeometry(w,h,d).translate(x,y,z),col);
+function boxCut(w,h,d,x,y,z,col,drop){const g=box(w,h,d,x,y,z,col),keep=[];for(let f=0;f<6;f++)if(!drop.includes(f))keep.push(f);
+  const out=new T3.BufferGeometry();for(const k of ['position','color']){const a=g.attributes[k].array,o=new Float32Array(keep.length*18);keep.forEach((f,i)=>o.set(a.subarray(f*18,f*18+18),i*18));out.setAttribute(k,new T3.BufferAttribute(o,3))}return out}
+/* a flat outward-facing (+z) panel band with a rectangular hole cut for a window */
+function skin(P,x0,x1,y0,y1,z,col,hole){const q=(a,b,c,d)=>{if(b-a>1e-3&&d-c>1e-3)P.push(part(new T3.PlaneGeometry(b-a,d-c).translate((a+b)/2,(c+d)/2,z),col))};
+  const [hx0,hx1,hy0,hy1]=hole;if(y1<=hy0||y0>=hy1){q(x0,x1,y0,y1);return}
+  q(x0,hx0,y0,y1);q(hx1,x1,y0,y1);q(hx0,hx1,y0,Math.min(y1,hy0));q(hx0,hx1,Math.max(y0,hy1),y1)}
+function pixTex(w,h,draw,rep){const c=document.createElement('canvas');c.width=w;c.height=h;draw(c.getContext('2d'),w,h);const t=new T3.CanvasTexture(c);t.magFilter=T3.NearestFilter;t.minFilter=T3.NearestFilter;if(rep){t.wrapS=t.wrapT=T3.RepeatWrapping;t.repeat.set(rep[0],rep[1])}return t}
+
+/* ==========================================================================
+   World layout
+   ========================================================================== */
+const PR={x:7.2,z:5.2};                 // pond radii (centred on origin, surface y=0)
+const RV={x:1.6,z:-9.0};                // camper centre on the ground
+const pondE=(x,z)=>Math.hypot(x/PR.x,z/PR.z);
+function hAt(x,z){
+  const e=pondE(x,z),r=Math.hypot(x,z);
+  let h=.34+(fbm(x*.09+3,z*.09+7)-.5)*.55+Math.max(0,r-17)*.07+Math.max(0,-z-13)*.06;
+  const pad=Math.exp(-(((x-RV.x-.6)/4.4)**2+((z-RV.z-1.4)/2.9)**2));h=lerp(h,.42,pad*.92);
+  return lerp(-1.05,h,sstep(.78,1.1,e));
+}
+const GY=hAt(RV.x,RV.z);
+const scene=new T3.Scene();
+const LAYER_IN=1;
+
+/* ---------- sky dome ---------- */
+const skyMat=new T3.ShaderMaterial({depthWrite:false,fog:false,side:T3.BackSide,
+  uniforms:{cTop:{value:C(0)},cMid:{value:C(0)},cHor:{value:C(0)},sunDir:{value:new T3.Vector3(0,1,0)},sunCol:{value:C(0)},uStars:{value:0},uMoon:{value:0},uDisk:{value:1},uTime:U.time},
+  vertexShader:`varying vec3 vD;void main(){vD=normalize(position);vec4 p=projectionMatrix*modelViewMatrix*vec4(position,1.);gl_Position=p.xyww;}`,
+  fragmentShader:`uniform vec3 cTop,cMid,cHor,sunDir,sunCol;uniform float uStars,uMoon,uDisk,uTime;varying vec3 vD;
+  float h(vec3 p){return fract(sin(dot(p,vec3(12.9898,78.233,37.719)))*43758.5453);}
+  void main(){vec3 d=normalize(vD);float e=d.y;vec3 c=mix(cMid,cTop,smoothstep(.04,.6,e));c=mix(cHor,c,smoothstep(-.02,.2,e));
+    float s=dot(d,sunDir);c+=sunCol*(pow(max(s,0.),18.)*.35+pow(max(s,0.),200.)*.4)*uDisk;
+    float disk=step(.9988,s);if(uMoon>.5){vec3 o=normalize(sunDir+vec3(-.03,.012,0.));disk*=1.-step(.9988,dot(d,o));}
+    c=mix(c,sunCol*1.15,disk*uDisk);
+    if(uStars>0.){vec3 q=floor(d*260.);float r=h(q);if(r>.9968&&e>.04)c+=vec3(.9,.92,1.)*uStars*(.55+.45*sin(uTime*(1.+r*3.)+r*60.));}
+    gl_FragColor=vec4(c,1.);}`});
+const sky=new T3.Mesh(new T3.SphereGeometry(400,24,12),skyMat);sky.renderOrder=-10;sky.frustumCulled=false;
+sky.onBeforeRender=(r,s,cam)=>{sky.position.copy(cam.position);sky.updateMatrixWorld()};
+scene.add(sky);
+
+/* ---------- lights ---------- */
+const hemi=new T3.HemisphereLight(0xffffff,0x444444,.6);scene.add(hemi);
+const sun=new T3.DirectionalLight(0xffffff,1);sun.castShadow=true;sun.shadow.mapSize.set(Q.shadow,Q.shadow);
+Object.assign(sun.shadow.camera,{left:-17,right:17,top:17,bottom:-17,near:1,far:80});sun.shadow.bias=-.0015;
+sun.target.position.set(0,0,-3);scene.add(sun,sun.target);
+const fireLight=new T3.PointLight(0xff9a4a,0,9,2);scene.add(fireLight);
+const lampLight=new T3.PointLight(0xffb36b,0,3.2,2);scene.add(lampLight);
+
+/* ---------- terrain ---------- */
+{
+  const g=new T3.PlaneGeometry(90,90,110,110).rotateX(-Math.PI/2).toNonIndexed(),p=g.attributes.position,n=p.count,col=new Float32Array(n*3);
+  for(let i=0;i<n;i++)p.setY(i,hAt(p.getX(i),p.getZ(i)));
+  const grass=[C('#6c7a44'),C('#7f8546'),C('#5c6a3c'),C('#8f8243')],mud=C('#3f4a3a'),deep=C('#2c3a34'),sand=C('#a99470'),dirt=C('#8e7556'),aut=C('#9b6f3a');
+  const dock0=new T3.Vector2(-3.1,-5.3),door=new T3.Vector2(RV.x+.7,RV.z+1.4);
+  for(let i=0;i<n;i+=3){const cx=(p.getX(i)+p.getX(i+1)+p.getX(i+2))/3,cz=(p.getZ(i)+p.getZ(i+1)+p.getZ(i+2))/3,e=pondE(cx,cz),nz=fbm(cx*.3,cz*.3);
+    let c=grass[(nz*4*.999)|0].clone();if(fbm(cx*.12+20,cz*.12)>.62)c.lerp(aut,.55);
+    if(e<1.12)c.lerp(sand,sstep(1.12,1.0,e));if(e<1.0)c=mud.clone().lerp(deep,sstep(.95,.6,e));
+    // worn path from the camper door to the dock
+    const ab=dock0.clone().sub(door),ap=new T3.Vector2(cx,cz).sub(door),t=clamp(ap.dot(ab)/ab.lengthSq()),dd=ap.sub(ab.multiplyScalar(t)).length();
+    if(dd<.55&&e>1.02)c.lerp(dirt,.8);
+    const pad=Math.hypot((cx-RV.x-.8)/3.4,(cz-RV.z-1.9)/1.7);if(pad<1)c.lerp(dirt,.5*(1-pad));
+    for(let k=0;k<3;k++){col[(i+k)*3]=c.r;col[(i+k)*3+1]=c.g;col[(i+k)*3+2]=c.b}}
+  g.setAttribute('color',new T3.BufferAttribute(col,3));g.computeVertexNormals();
+  const m=new T3.Mesh(g,new T3.MeshLambertMaterial({vertexColors:true}));m.receiveShadow=true;scene.add(m);
+}
+/* ---------- distant hills (fog does the haze) ---------- */
+{
+  const r=rng(9),n=26,im=new T3.InstancedMesh(new T3.ConeGeometry(1,1,6,1),toon(0x5d6b72,{}),n),M=new T3.Matrix4();
+  for(let i=0;i<n;i++){const a=i/n*Math.PI*2+r()*.2,R=58+r()*20,h=10+r()*16,w=12+r()*14;M.compose(new T3.Vector3(Math.cos(a)*R,h/2-2,Math.sin(a)*R),new T3.Quaternion().setFromEuler(new T3.Euler(0,r()*3,0)),new T3.Vector3(w,h,w*.8));im.setMatrixAt(i,M)}
+  scene.add(im);
+}
+/* ---------- clouds ---------- */
+const clouds=new T3.Group();scene.add(clouds);const cloudMat=toon(0xffffff,{emissive:0x000000});
+function buildClouds(n){clouds.clear();const r=rng(12);
+  for(let i=0;i<n;i++){const parts=[];const k=3+((r()*4)|0);for(let j=0;j<k;j++)parts.push(part(new T3.IcosahedronGeometry(1,0).scale(1.6+r(),1+r()*.5,1.4+r()).translate(j*1.9-k*.9,r()*.6,r()*1.2),'#ffffff'));
+    const m=new T3.Mesh(merge(parts),cloudMat);const a=r()*Math.PI*2,R=70+r()*50;m.position.set(Math.cos(a)*R,26+r()*18,Math.sin(a)*R);m.scale.setScalar(2+r()*2.2);m.lookAt(0,m.position.y,0);clouds.add(m)}}
+
+/* ---------- water (reflection + ripples + rain rings + glints) ---------- */
+const reflRT=new T3.WebGLRenderTarget(4,4,{minFilter:T3.NearestFilter,magFilter:T3.NearestFilter});
+const reflCam=new T3.PerspectiveCamera();reflCam.layers.set(0);reflCam.layers.enable(1);
+const waterMat=new T3.ShaderMaterial({transparent:true,depthWrite:false,
+  uniforms:{tRefl:{value:reflRT.texture},textureMatrix:{value:new T3.Matrix4()},uTime:U.time,uRain:{value:0},uWind:U.wind,
+    cDeep:{value:C('#2b4a58')},cShallow:{value:C('#5c7c70')},cSpec:{value:C('#fff0d0')},sunDir:{value:new T3.Vector3(0,1,0)},pr:{value:new T3.Vector2(PR.x,PR.z)},
+    camPos:{value:new T3.Vector3()},fishP:{value:Array.from({length:5},()=>new T3.Vector4(0,0,0,0))},fishC:{value:[C('#1f2c30'),C('#26302e'),C('#1c2628'),C('#b8642e'),C('#28322e')]},rings:{value:Array.from({length:6},()=>new T3.Vector4(0,0,-99,0))},uSpecK:{value:1}},
+  vertexShader:`uniform mat4 textureMatrix;varying vec4 vRefl;varying vec3 vW;void main(){vec4 w=modelMatrix*vec4(position,1.);vW=w.xyz;vRefl=textureMatrix*vec4(position,1.);gl_Position=projectionMatrix*viewMatrix*w;}`,
+  fragmentShader:`uniform sampler2D tRefl;uniform float uTime,uRain,uWind,uSpecK;uniform vec3 cDeep,cShallow,cSpec,sunDir,camPos;uniform vec2 pr;uniform vec4 rings[6];uniform vec4 fishP[5];uniform vec3 fishC[5];varying vec4 vRefl;varying vec3 vW;
+  float h21(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
+  void main(){vec2 p=vW.xz;float t=uTime;float wk=uWind;
+    vec2 n=vec2(sin(p.x*1.7+t*.9*wk)+.5*sin(p.x*3.1-p.y*2.3+t*1.3*wk),sin(p.y*2.1-t*.8*wk)+.5*sin(p.y*3.7+p.x*1.9+t*1.1*wk))*(.012+.007*(wk-1.));
+    float ring=0.;
+    if(uRain>0.){for(int k=0;k<2;k++){float sc=k==0?1.25:.8;vec2 g=p*sc+float(k)*17.;vec2 id=floor(g);vec2 f=fract(g)-.5;float r=h21(id);vec2 c=(vec2(h21(id+3.1),h21(id+7.7))-.5)*.6;
+      float ph=fract(t*(.9+r*.7)+r*7.);float d=length(f-c);float w=smoothstep(.06,0.,abs(d-ph*.42))*(1.-ph);ring+=w;n+=normalize(f-c+1e-4)*w*.06;}ring*=uRain;}
+    for(int i=0;i<6;i++){vec4 R=rings[i];float age=t-R.z;if(age>0.&&age<3.2){float d=length(p-R.xy);float w=smoothstep(.07,0.,abs(d-age*.6))*(1.-age/3.2)*R.w;ring+=w;n+=normalize(p-R.xy+1e-4)*w*.05;}}
+    vec3 V=normalize(camPos-vW);float fres=pow(1.-max(V.y,0.),2.5)*.8+.2;
+    vec4 rp=vRefl;rp.xy+=n*(.5+uRain*.6)*rp.w;vec3 refl=texture2DProj(tRefl,rp).rgb;
+    float e=length(p/pr),shallow=smoothstep(.5,1.,e);
+    vec3 base=mix(cDeep,cShallow,shallow);
+    vec3 col=mix(base,refl,clamp(fres*(1.-shallow*.5)*.95+.16,0.,.9));
+    col*=.9+.1*smoothstep(.9,.2,e);
+    for(int i=0;i<5;i++){vec4 F=fishP[i];if(F.w<=0.)continue;vec2 d=p-F.xy;vec2 dir=vec2(cos(F.z),sin(F.z));vec2 l=vec2(dot(d,dir),dot(d,vec2(-dir.y,dir.x)));
+      float wig=sin(uTime*6.+float(i)*2.+l.x*6.)*.03*smoothstep(0.,-.3,l.x);l.y+=wig;
+      float body=step(length(l/vec2(.3,.095)),1.);float tail=step(-.48,l.x)*step(l.x,-.24)*step(abs(l.y),(-.2-l.x)*.55);
+      col=mix(col,fishC[i],max(body,tail)*F.w);}
+    vec3 N=normalize(vec3(-n.x*7.,1.,-n.y*7.));vec3 H=normalize(normalize(sunDir)+V);float sp=pow(max(dot(N,H),0.),160.);
+    col+=cSpec*step(.5,sp)*.85*uSpecK;
+    float sh=step(.975,sin(p.x*8.+sin(p.y*3.+t*.6)*2.+t*.7*wk)*sin(p.y*13.-t*.9*wk));col+=cSpec*sh*.26*uSpecK;
+    float band=smoothstep(.55,1.,sin(p.x*1.3+p.y*2.1+t*.35*wk+sin(p.y*.7+t*.2)*1.5))*(1.-shallow);col=mix(col,col*1.12+cSpec*.03,band*.5);
+    col+=vec3(.8,.84,.92)*ring*.45;
+    gl_FragColor=vec4(col,mix(.93,.5,shallow*shallow));}`});
+const water=new T3.Mesh(new T3.PlaneGeometry(PR.x*2.3,PR.z*2.3,1,1).rotateX(-Math.PI/2),waterMat);water.position.y=0;water.renderOrder=2;scene.add(water);
+function renderReflection(cam){
+  // mirror the camera in the water plane (as three's Reflector does) and render the world above the water
+  const rw=new T3.Vector3(0,water.position.y,0),N=new T3.Vector3(0,1,0),cp=new T3.Vector3().setFromMatrixPosition(cam.matrixWorld);
+  const view=rw.clone().sub(cp);if(view.dot(N)>0)return;view.reflect(N).negate().add(rw);
+  const rot=new T3.Matrix4().extractRotation(cam.matrixWorld),look=new T3.Vector3(0,0,-1).applyMatrix4(rot).add(cp);
+  const tgt=rw.clone().sub(look).reflect(N).negate().add(rw);
+  reflCam.position.copy(view);reflCam.up.set(0,1,0).applyMatrix4(rot).reflect(N);reflCam.lookAt(tgt);
+  reflCam.fov=cam.fov;reflCam.aspect=cam.aspect;reflCam.near=cam.near;reflCam.far=cam.far;if(cam.view&&cam.view.enabled){const v=cam.view;reflCam.setViewOffset(v.fullWidth,v.fullHeight,v.offsetX,v.offsetY,v.width,v.height)}else if(reflCam.view&&reflCam.view.enabled)reflCam.clearViewOffset();reflCam.updateProjectionMatrix();reflCam.updateMatrixWorld();
+  const tm=waterMat.uniforms.textureMatrix.value;tm.set(.5,0,0,.5,0,.5,0,.5,0,0,.5,.5,0,0,0,1);tm.multiply(reflCam.projectionMatrix).multiply(reflCam.matrixWorldInverse).multiply(water.matrixWorld);
+  water.visible=false;const hid=[];for(const o of hideInReflection)if(o.visible){o.visible=false;hid.push(o)}
+  renderer.clippingPlanes=[new T3.Plane(new T3.Vector3(0,1,0),-.02)];
+  renderer.setRenderTarget(reflRT);renderer.clear();renderer.render(scene,reflCam);
+  renderer.clippingPlanes=[];water.visible=true;for(const o of hid)o.visible=true;
+}
+const hideInReflection=[];
+
+/* ---------- fish below the surface ---------- */
+const fish=[];{
+  const g=merge([part(new T3.ConeGeometry(.13,.55,5).rotateZ(-Math.PI/2),'#ffffff'),part(new T3.ConeGeometry(.1,.2,3).rotateZ(Math.PI/2).translate(-.33,0,0),'#ffffff')]);
+  const cols=['#2f3b3a','#34403c','#2a3434','#c0703a','#3a4440'],r=rng(4);
+  for(let i=0;i<5;i++){const m=new T3.Mesh(g,new T3.MeshBasicMaterial({color:cols[i],vertexColors:true,fog:false}));m.position.y=-.32-r()*.2;
+    fish.push({m,a:r()*6,b:r()*6,sp:.05+r()*.05,rx:.45+r()*.4,rz:.45+r()*.4,dart:0});}
+}
+/* ---------- vegetation ---------- */
+const M4=new T3.Matrix4(),QQ=new T3.Quaternion(),V3=new T3.Vector3(),SC=new T3.Vector3();
+function place(im,i,x,y,z,s,ry=0,sy=s){V3.set(x,y,z);QQ.setFromEuler(new T3.Euler(0,ry,0));SC.set(s,sy,s);M4.compose(V3,QQ,SC);im.setMatrixAt(i,M4)}
+const treeSpots=[];{
+  const r=rng(21),add=(x,z,s,k)=>{if(pondE(x,z)<1.18)return;if(Math.hypot((x-RV.x)/3.4,(z-RV.z-1)/2.2)<1.3)return;treeSpots.push({x,z,s,k})};
+  for(let i=0;i<34;i++)add(-14+r()*28,-12-r()*9,.9+r()*.8,r()<.72?'p':'b');
+  for(let i=0;i<14;i++){const s=r()<.5?-1:1;add(s*(9.5+r()*6),-9+r()*16,.8+r()*.7,r()<.6?'p':'b')}
+  for(let i=0;i<22;i++)add(-16+r()*32,15+r()*12,.9+r()*.8,r()<.65?'p':'b');
+  add(-7.4,7.6,1.35,'p');add(-9.2,5.4,1.1,'b');add(8.6,8.8,1.15,'p');add(-4.6,-9.6,1.0,'b');add(5.8,-11.2,1.2,'p');add(-1.4,-11.6,1.1,'b');
+  add(-6.4,-8.4,.85,'b');add(9.8,-4.2,1.0,'b');
+  for(let i=0;i<150;i++){const a=r()*Math.PI*2,R=19+r()*16,x=Math.cos(a)*R*1.15,z=Math.sin(a)*R-3;if(z>16&&Math.abs(x)<12)continue;add(x,z,.9+r()*.9,r()<.8?'p':'b')}
+  for(let i=0;i<26;i++)add(-17+r()*9,-6-r()*10,.8+r()*.7,r()<.6?'p':'b');
+  const pines=treeSpots.filter(t=>t.k==='p'),leafy=treeSpots.filter(t=>t.k==='b');
+  const pg=merge([part(new T3.CylinderGeometry(.1,.14,.9,5).translate(0,.45,0),'#4a3a30'),part(new T3.ConeGeometry(1.05,1.5,7).translate(0,1.25,0),'#2f4a3a'),
+    part(new T3.ConeGeometry(.82,1.25,7).translate(0,2.0,0),'#365440'),part(new T3.ConeGeometry(.55,1.05,7).translate(0,2.7,0),'#3d5c45')]);
+  const pm=new T3.InstancedMesh(pg,sway(toon(0xffffff,{vertexColors:true}),.05,3.2),pines.length);pm.castShadow=true;
+  pines.forEach((t,i)=>{place(pm,i,t.x,hAt(t.x,t.z)-.05,t.z,t.s*1.15,r()*6,t.s*(1.25+r()*.4));pm.setColorAt(i,C('#ffffff').lerp(C('#c8d8b0'),r()*.5))});scene.add(pm);
+  const lg=merge([part(new T3.IcosahedronGeometry(.85,0).translate(0,1.75,0),'#ffffff'),part(new T3.IcosahedronGeometry(.62,0).translate(.55,1.4,.2),'#ffffff'),part(new T3.IcosahedronGeometry(.6,0).translate(-.5,1.5,-.15),'#ffffff')]);
+  const lm=new T3.InstancedMesh(lg,sway(toon(0xffffff,{vertexColors:true}),.08,2.4),leafy.length);lm.castShadow=true;
+  const tg=part(new T3.CylinderGeometry(.08,.13,1.4,5).translate(0,.7,0),'#4a3a30'),tm=new T3.InstancedMesh(tg,toon(0xffffff,{vertexColors:true}),leafy.length);tm.castShadow=true;
+  const ac=['#d2803e','#e0a64c','#b9532f','#c9903c','#7f8a44'];
+  leafy.forEach((t,i)=>{const s=t.s,ry=r()*6;place(lm,i,t.x,hAt(t.x,t.z)-.05,t.z,s,ry);place(tm,i,t.x,hAt(t.x,t.z)-.05,t.z,s,ry);lm.setColorAt(i,C(ac[(r()*ac.length)|0]))});
+  scene.add(lm,tm);
+}
+{ // grass tufts
+  const g=merge([0,1,2].map(k=>part(new T3.ConeGeometry(.05,.42,3).translate(0,.21,0).rotateZ((k-1)*.35).rotateY(k*2.1),'#ffffff')));
+  const im=new T3.InstancedMesh(g,sway(toon(0xffffff,{vertexColors:true}),.12,.42),Q.grass),r=rng(31);let n=0;
+  const gc=['#7a8646','#8d8a4c','#a7924e','#6a7a42','#9f7c44'];
+  for(let tries=0;n<Q.grass&&tries<Q.grass*8;tries++){const x=-20+r()*40,z=-16+r()*34,e=pondE(x,z);if(e<1.12)continue;if(Math.hypot((x-RV.x)/2.8,(z-RV.z)/1.5)<1)continue;
+    if(Math.hypot(x-RV.x-1.4,z-RV.z-3.1)<1.5)continue;if(Math.hypot(x,z-11)<2.5&&r()<.7)continue;
+    const near=sstep(1.6,1.12,e)*.7+.6;place(im,n,x,hAt(x,z)-.02,z,(.7+r()*.8)*near,r()*6);im.setColorAt(n,C(gc[(r()*gc.length)|0]));n++}
+  im.count=n;scene.add(im);
+}
+{ // reeds and cattails around the shore
+  const blade=part(new T3.ConeGeometry(.035,1.3,3).translate(0,.65,0),'#ffffff'),im=new T3.InstancedMesh(blade,sway(toon(0xffffff,{vertexColors:true}),.22,1.3),Q.reeds);
+  const cat=part(new T3.CylinderGeometry(.045,.045,.22,5).translate(0,1.32,0),'#6b4a30'),cm=new T3.InstancedMesh(cat,sway(toon(0xffffff,{vertexColors:true}),.22,1.3),Q.reeds);
+  const r=rng(41);let n=0,nc=0;const rc=['#5d6a3e','#7a7a44','#8f8048','#4f5c3a','#a08a50'];
+  const clusters=[[-4.8,4.2],[5.2,3.9],[-5.9,3.0],[-6.8,1.2],[6.2,2.6],[6.9,-.6],[-6.2,-2.6],[-4.4,-3.9],[4.9,-3.6],[6.2,-2.9],[-7.0,-.8]];
+  for(const [cx,cz] of clusters){const k=Math.round(Q.reeds/clusters.length);
+    for(let j=0;j<k&&n<Q.reeds;j++){const a=r()*6.28,d=Math.sqrt(r())*1.2,x=cx+Math.cos(a)*d,z=cz+Math.sin(a)*d*.7,e=pondE(x,z);if(e<.9||e>1.2)continue;
+      const y=Math.max(hAt(x,z),-.25),s=.55+r()*.5;place(im,n,x,y,z,s,r()*6,s*(.6+r()*.5));im.setColorAt(n,C(rc[(r()*rc.length)|0]));
+      if(r()<.18){place(cm,nc,x,y,z,s,0,s*(.6+r()*.5));cm.setColorAt(nc,C('#ffffff'));nc++}n++}}
+  im.count=n;cm.count=nc;scene.add(im,cm);
+}
+{ // lily pads (drawn after the water so they sit on the surface)
+  const g=part(new T3.CircleGeometry(1,7,.5,5.5).rotateX(-Math.PI/2),'#ffffff'),r=rng(61),spots=[[-1.8,3.4],[-2.5,2.9],[-1.2,3.9],[2.9,3.3],[3.5,2.8],[-5.0,.5],[-5.4,-.5],[4.7,1.6],[1.4,-3.5],[-.5,-3.9],[.4,-3.2]];
+  const lm=toon(0xffffff,{vertexColors:true,transparent:true}),im=new T3.InstancedMesh(g,lm,spots.length*3),fl=new T3.InstancedMesh(part(new T3.OctahedronGeometry(.07,0),'#ffffff'),lm,6);let n=0,nf=0;
+  for(const [cx,cz] of spots)for(let k=0;k<3;k++){if(k&&r()<.35)continue;const x=cx+(r()-.5)*.9,z=cz+(r()-.5)*.6,sc=.16+r()*.14;place(im,n,x,.015,z,sc,r()*6,1);im.setColorAt(n,C(['#4f7a46','#5e8a4e','#6c9654','#47703f'][(r()*4)|0]));n++;
+    if(nf<6&&r()<.3){place(fl,nf,x+.04,.05,z,1);fl.setColorAt(nf,C(['#f2c6cf','#fff2e4'][nf%2]));nf++}}
+  im.count=n;fl.count=nf;im.renderOrder=fl.renderOrder=3;scene.add(im,fl);hideInReflection.push(im,fl);
+}
+{ // rocks
+  const r=rng(51),list=[];
+  for(let i=0;i<26;i++){const a=r()*6.28,e=1.02+r()*.12;list.push([Math.cos(a)*PR.x*e,Math.sin(a)*PR.z*e,.25+r()*.4])}
+  list.push([-6.6,6.0,.7],[6.4,5.2,.55],[-7.4,4.2,.45],[4.9,5.8,.35]);
+  const fx=RV.x+1.4,fz=RV.z+3.1;for(let i=0;i<9;i++){const a=i/9*6.28;list.push([fx+Math.cos(a)*.62,fz+Math.sin(a)*.62,.17])}
+  const im=new T3.InstancedMesh(new T3.DodecahedronGeometry(1,0),toon(0xffffff,{}),list.length);im.castShadow=im.receiveShadow=true;
+  list.forEach(([x,z,s],i)=>{place(im,i,x,hAt(x,z)+s*.15,z,s,r()*6,s*(.55+r()*.3));im.setColorAt(i,C('#8a8a86').lerp(C('#6d6a60'),r()))});scene.add(im);
+}
+
+/* ---------- dock ---------- */
+{
+  const parts=[],a=new T3.Vector3(-3.15,0,-5.2),b=new T3.Vector3(-2.05,0,-2.2),dir=b.clone().sub(a),len=dir.length();dir.normalize();
+  const ang=Math.atan2(dir.x,dir.z),r=rng(61);
+  for(let i=0;i<Math.round(len/.28);i++){const t=(i+.5)/Math.round(len/.28),p=a.clone().lerp(b,t);parts.push(part(new T3.BoxGeometry(1.15,.06,.24).rotateY(ang).translate(p.x,.22+r()*.02,p.z),i%3?'#8a6a4c':'#7a5c42'))}
+  for(const t of [0,.5,1])for(const s of [-.5,.5]){const p=a.clone().lerp(b,t),o=new T3.Vector3(Math.cos(ang),0,-Math.sin(ang)).multiplyScalar(s);parts.push(part(new T3.CylinderGeometry(.06,.07,1.4,5).translate(p.x+o.x,-.45,p.z+o.z),'#5a4434'))}
+  const lp=b.clone().add(new T3.Vector3(Math.cos(ang),0,-Math.sin(ang)).multiplyScalar(.5));
+  parts.push(part(new T3.CylinderGeometry(.04,.04,.9,5).translate(lp.x,.65,lp.z),'#3f3430'));
+  const m=new T3.Mesh(merge(parts),toon(0xffffff,{vertexColors:true}));m.castShadow=m.receiveShadow=true;scene.add(m);
+  var dockLamp=new T3.Mesh(new T3.BoxGeometry(.14,.18,.14),new T3.MeshBasicMaterial({color:0xffc070}));dockLamp.position.set(lp.x,1.15,lp.z);scene.add(dockLamp);
+}
+
+/* ---------- camp: fire pit, chairs, string lights ---------- */
+function setStringLights(loc){camp.setAnchor(loc)}
+const camp={};{
+  const fx=RV.x+1.4,fz=RV.z+3.1,fy=hAt(fx,fz);
+  const logs=merge([part(new T3.CylinderGeometry(.06,.06,.6,5).rotateZ(Math.PI/2).rotateY(.6).translate(fx,fy+.08,fz),'#4a3428'),part(new T3.CylinderGeometry(.06,.06,.6,5).rotateZ(Math.PI/2).rotateY(-.7).translate(fx,fy+.1,fz),'#553a2c')]);
+  scene.add(new T3.Mesh(logs,toon(0xffffff,{vertexColors:true})));
+  const fl=new T3.Group();const f1=new T3.Mesh(new T3.ConeGeometry(.16,.5,5),new T3.MeshBasicMaterial({color:0xff8a3a}));f1.position.y=.25;
+  const f2=new T3.Mesh(new T3.ConeGeometry(.09,.32,5),new T3.MeshBasicMaterial({color:0xffd27a}));f2.position.y=.2;fl.add(f1,f2);fl.position.set(fx,fy+.08,fz);scene.add(fl);
+  camp.flame=fl;fireLight.position.set(fx,fy+.7,fz);
+  const chair=(x,z,ry,col)=>{const y=hAt(x,z),p=[box(.55,.06,.5,0,.36,0,col),box(.55,.5,.06,0,.62,-.24,col),
+      part(new T3.CylinderGeometry(.02,.02,.5,4).rotateX(.5).translate(-.26,.2,0),'#2e2a2c'),part(new T3.CylinderGeometry(.02,.02,.5,4).rotateX(-.5).translate(-.26,.2,0),'#2e2a2c'),
+      part(new T3.CylinderGeometry(.02,.02,.5,4).rotateX(.5).translate(.26,.2,0),'#2e2a2c'),part(new T3.CylinderGeometry(.02,.02,.5,4).rotateX(-.5).translate(.26,.2,0),'#2e2a2c')];
+    const m=new T3.Mesh(merge(p),toon(0xffffff,{vertexColors:true}));m.position.set(x,y,z);m.rotation.y=ry;m.castShadow=true;scene.add(m)};
+  chair(fx-1.05,fz-.55,.5,'#b9502f');chair(fx+1.0,fz-.6,-.45,'#3f7a70');
+  // string lights from the camper (awning or roof corner) to a pole; the anchor moves with the awning choice
+  const b=new T3.Vector3(RV.x+4.6,hAt(RV.x+4.6,RV.z+1.2)+2.4,RV.z+1.2),n=14;
+  const sl=new T3.InstancedMesh(new T3.SphereGeometry(.05,5,4),new T3.MeshBasicMaterial({color:0xffffff}),n);
+  for(let i=0;i<n;i++)sl.setColorAt(i,C(['#ffcf7a','#ffb36b','#ffe2a0'][i%3]));
+  scene.add(sl);camp.lights=sl;
+  camp.setAnchor=(loc)=>{const a=new T3.Vector3(RV.x+loc.x,GY+loc.y,RV.z+loc.z);for(let i=0;i<n;i++){const t=(i+.5)/n,p=a.clone().lerp(b,t);p.y-=Math.sin(t*Math.PI)*.45;place(sl,i,p.x,p.y,p.z,1)}sl.instanceMatrix.needsUpdate=true};
+  const pole=new T3.Mesh(new T3.CylinderGeometry(.04,.05,2.6,5),toon(0x4a3a30));pole.position.set(b.x,b.y-1.2,b.z);scene.add(pole);
+}
+
+/* ==========================================================================
+   The camper (exterior). Local frame: x along the body (front +x),
+   z across (pond side +z), y up from the ground.
+   ========================================================================== */
+const rvExt=new T3.Group();rvExt.position.set(RV.x,GY,RV.z);scene.add(rvExt);
+const WIN={x:-1.35,y:1.8,w:1.45,h:1.24,z:1.0};  // hero window (local)
+const winWorld=new T3.Vector3(RV.x+WIN.x,GY+WIN.y,RV.z+WIN.z);
+const glassMat=new T3.ShaderMaterial({transparent:true,depthWrite:false,side:T3.DoubleSide,
+  uniforms:{uTime:U.time,uRain:{value:0},uTint:{value:C('#a8b8d0')},uTintA:{value:.08},uWarm:{value:0},uAsp:{value:WIN.w/WIN.h},uS:{value:1}},
+  vertexShader:`varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,
+  fragmentShader:`uniform float uTime,uRain,uTintA,uWarm,uAsp,uS;uniform vec3 uTint;varying vec2 vUv;
+  float h(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
+  void main(){vec2 uv=vUv*vec2(uAsp,1.);vec4 c=vec4(uTint,uTintA);
+    // a soft warm sheen of the lamp on the inside of the glass
+    c.rgb=mix(c.rgb,vec3(1.,.72,.42),uWarm*smoothstep(.75,0.,length(vUv-vec2(.85,.2))));c.a+=uWarm*.12*smoothstep(.75,0.,length(vUv-vec2(.85,.2)));
+    if(uRain>0.){
+      // static beads
+      vec2 g=uv*14.*uS;vec2 id=floor(g);vec2 f=fract(g)-.5;float r=h(id);
+      if(r>.55){vec2 o=(vec2(h(id+1.3),h(id+2.7))-.5)*.5;float d=length((f-o)*vec2(1.,.85));float rad=.08+.12*h(id+5.);
+        float m=smoothstep(rad,rad*.6,d);float lit=smoothstep(.0,-.2,f.y-o.y)*smoothstep(.0,-.2,f.x-o.x);
+        c.rgb=mix(c.rgb,mix(vec3(.25,.3,.38),vec3(.95,.97,1.),lit),m*.9);c.a=max(c.a,m*.42*uRain);}
+      // sliding drops with trails
+      for(int k=0;k<2;k++){float cols=(k==0?9.:6.)*uS;vec2 g2=vec2(uv.x*cols,uv.y);float ix=floor(g2.x);float rr=h(vec2(ix,float(k)*7.));
+        float sp=.08+.12*rr;float y=1.-fract(uTime*sp+rr*3.);float x=fract(g2.x)-.5+(sin(uv.y*9.+rr*6.)*.08);
+        float dy=uv.y/1.-y;float drop=smoothstep(.14,.07,length(vec2(x,dy*cols*.5)));float trail=smoothstep(.05,.02,abs(x))*step(0.,dy)*smoothstep(.35,0.,dy)*.5;
+        float m=max(drop,trail);c.rgb=mix(c.rgb,vec3(.86,.9,.98),m*.7);c.a=max(c.a,m*.45*uRain);}
+    }
+    gl_FragColor=c;}`});
+/* ---------- customizable exterior: each slot has a builder; the body is rebuilt per paint ---------- */
+const PAINTS={
+  classic:{lower:'#bf7140',upper:'#e9d6b0',seam:'#d4bf98',stripe:'#3f7a70',line:'#e0904a',cap:'#f2e8d4'},
+  forest:{lower:'#46664c',upper:'#e7ddc2',seam:'#d0c4a6',stripe:'#c79a4e',line:'#33503a',cap:'#efe6d2'},
+  lake:{lower:'#56758c',upper:'#e9e2d0',seam:'#d2cab6',stripe:'#d39a62',line:'#3e5a70',cap:'#f1ebdd'},
+  rust:{lower:'#a24c34',upper:'#ecdcbc',seam:'#d6c4a2',stripe:'#3d4250',line:'#d8a258',cap:'#f3e8d2'}
+};
+const rvParts={body:null,awning:new T3.Group(),roof:new T3.Group(),detail:new T3.Group(),wheels:[]};
+rvExt.add(rvParts.awning,rvParts.roof,rvParts.detail);
+const trimC='#4c566e',darkC='#24232a',glassC='#2c3a52';
+function buildBody(pal){
+  const P=[],HOLE=[WIN.x-WIN.w/2,WIN.x+WIN.w/2,WIN.y-WIN.h/2,WIN.y+WIN.h/2];
+  P.push(boxCut(3.9,1.1,2.0,-.35,1.0,0,pal.lower,[2,4]),boxCut(3.9,.95,2.0,-.35,2.03,0,pal.upper,[3,4]),boxCut(3.92,.12,2.02,-.35,1.56,0,pal.stripe,[2,3,4]),boxCut(3.92,.05,2.02,-.35,1.47,0,pal.line,[2,3,4]));
+  skin(P,-2.3,1.6,.45,1.55,1.0,pal.lower,HOLE);skin(P,-2.3,1.6,1.555,2.505,1.0,pal.upper,HOLE);skin(P,-2.31,1.61,1.5,1.62,1.011,pal.stripe,HOLE);skin(P,-2.31,1.61,1.445,1.495,1.011,pal.line,HOLE);
+  P.push(box(.75,1.0,1.94,1.95,.95,0,pal.lower),box(.75,.6,1.94,1.95,1.73,0,pal.upper),box(.77,.12,1.96,1.95,1.56,0,pal.stripe),box(.42,.55,1.9,2.5,.82,0,pal.lower));
+  P.push(boxCut(3.55,.42,1.86,-.45,2.7,0,pal.cap,[3]),box(3.4,.06,1.7,-.45,2.93,0,'#f7efe0'));
+  P.push(box(.14,.16,2.06,2.72,.55,0,trimC),box(.14,.16,2.06,-2.32,.55,0,trimC));
+  for(let y=.7;y<2.6;y+=.18)P.push(box(.04,.03,.36,-2.33,y,-.4,trimC));
+  P.push(box(.05,1.9,.04,-2.33,1.65,-.58,trimC),box(.05,1.9,.04,-2.33,1.65,-.22,trimC));
+  P.push(box(.12,.6,.6,-2.38,1.25,.45,darkC),box(.08,.46,.46,-2.42,1.25,.45,pal.lower));
+  P.push(box(.5,.42,.02,1.95,1.8,1.0,glassC),box(.5,.42,.02,1.95,1.8,-1.0,glassC),box(.9,.5,.02,.15,1.95,-1.0,glassC),box(1.3,.5,.02,-1.35,1.95,-1.0,glassC));
+  P.push(part(new T3.BoxGeometry(.04,.62,1.7).rotateZ(-.55).translate(2.42,1.68,0),glassC));
+  P.push(box(.03,1.6,.02,-.05,1.3,1.005,pal.seam),box(.03,1.6,.02,1.15,1.3,1.005,pal.seam),box(.14,.04,.03,.05,1.35,1.02,trimC),box(.9,.06,.35,.55,.42,1.2,'#3c3a40'));
+  P.push(box(WIN.w+.12,.08,.06,WIN.x,WIN.y-WIN.h/2-.03,1.01,'#f2e8d4'),box(WIN.w+.12,.06,.06,WIN.x,WIN.y+WIN.h/2+.03,1.01,'#f2e8d4'),
+    box(.06,WIN.h+.1,.06,WIN.x-WIN.w/2-.03,WIN.y,1.01,'#f2e8d4'),box(.06,WIN.h+.1,.06,WIN.x+WIN.w/2+.03,WIN.y,1.01,'#f2e8d4'));
+  P.push(box(.04,.12,.18,2.73,.95,.7,'#fff2d0'),box(.04,.12,.18,2.73,.95,-.7,'#fff2d0'),box(.04,.14,.1,-2.33,1.0,.8,'#c0382c'),box(.04,.14,.1,-2.33,1.0,-.8,'#c0382c'));
+  if(rvParts.body){rvExt.remove(rvParts.body);rvParts.body.geometry.dispose()}
+  const body=new T3.Mesh(merge(P),bodyMat);body.castShadow=body.receiveShadow=true;rvExt.add(body);rvParts.body=body;
+}
+const bodyMat=toon(0xffffff,{vertexColors:true});
+// wheels (rims change with the detail upgrade)
+const wheelStd=merge([part(new T3.CylinderGeometry(.38,.38,.26,10).rotateX(Math.PI/2),'#1f1f24'),part(new T3.CylinderGeometry(.2,.2,.28,8).rotateX(Math.PI/2),'#cfc8b8'),part(new T3.CylinderGeometry(.06,.06,.3,6).rotateX(Math.PI/2),'#555')]);
+const wheelWW=merge([part(new T3.CylinderGeometry(.38,.38,.26,12).rotateX(Math.PI/2),'#1f1f24'),part(new T3.CylinderGeometry(.32,.32,.27,12).rotateX(Math.PI/2),'#e8e2d4'),
+  part(new T3.CylinderGeometry(.25,.25,.28,10).rotateX(Math.PI/2),'#b8b2a6'),part(new T3.CylinderGeometry(.13,.13,.29,8).rotateX(Math.PI/2),'#ece8de')]);
+const wheelMat=toon(0xffffff,{vertexColors:true});
+for(const [x,z] of [[1.7,1.0],[1.7,-1.0],[-1.55,1.0],[-1.55,-1.0]]){const w=new T3.Mesh(wheelStd,wheelMat);w.position.set(x,.38,z);w.castShadow=true;rvExt.add(w);rvParts.wheels.push(w)}
+// rug and step stay with the camp
+{const rug=new T3.Mesh(new T3.PlaneGeometry(1.6,.9),toon(0xffffff,{map:pixTex(16,8,(g,w,h)=>{for(let x=0;x<w;x++){g.fillStyle=['#a8452e','#e2ae62','#2f3e52','#e8d6b0'][x%4];g.fillRect(x,0,1,h)}})}));
+  rug.rotation.x=-Math.PI/2;rug.position.set(.8,.03,1.85);rug.receiveShadow=true;rvExt.add(rug)}
+// the hero window is a real opening: the interior (rvInt) is seen through it from outside
+{const eg=new T3.Mesh(new T3.PlaneGeometry(WIN.w,WIN.h),glassMat);eg.position.set(WIN.x,WIN.y,1.03);rvExt.add(eg);rvExt.userData.glass=eg;hideInReflection.push(eg)}
+const lanternGlow=new T3.MeshBasicMaterial({color:0xffd27a});
+function clearGroup(g){for(const c of [...g.children]){g.remove(c);c.traverse(o=>{if(o.geometry)o.geometry.dispose()})}}
+const RV_BUILD={
+  paint(id){const pal=PAINTS[id]||PAINTS.classic;buildBody(pal);RV_BUILD._pal=pal;if(RV_BUILD._aw)RV_BUILD.awning(RV_BUILD._aw)},
+  awning(id){RV_BUILD._aw=id;clearGroup(rvParts.awning);const pal=RV_BUILD._pal||PAINTS.classic,G=rvParts.awning;
+    if(id==='striped'){
+      const at=pixTex(16,4,(g,w,h)=>{for(let x=0;x<w;x++){g.fillStyle=x%4<2?'#efe2c4':pal.stripe;g.fillRect(x,0,1,h)}g.fillStyle='rgba(0,0,0,.18)';g.fillRect(0,h-1,w,1)});
+      const aw=new T3.Mesh(new T3.PlaneGeometry(1.9,1.35),toon(0xffffff,{map:at,side:T3.DoubleSide}));aw.position.set(.8,2.25,1.62);aw.rotation.x=-Math.PI/2+.35;aw.castShadow=true;G.add(aw);
+      for(const x of [-.1,1.7]){const p=new T3.Mesh(new T3.CylinderGeometry(.025,.025,2.05,4),toon(0x3a3a44));p.position.set(x,1.02,2.22);G.add(p)}
+      setStringLights(new T3.Vector3(1.85,2.05,2.25));
+    }else if(id==='canvas'){
+      // heavier canvas with a scalloped valance, wooden poles and guy lines
+      const cv2=pixTex(32,16,(g,w,h)=>{g.fillStyle='#d8c39a';g.fillRect(0,0,w,h);for(let y=0;y<h;y+=2){g.fillStyle='rgba(120,90,50,.08)';g.fillRect(0,y,w,1)}for(let x=0;x<w;x+=8){g.fillStyle='rgba(90,64,36,.18)';g.fillRect(x,0,1,h)}g.fillStyle='rgba(0,0,0,.14)';g.fillRect(0,h-1,w,1)});
+      const aw=new T3.Mesh(new T3.PlaneGeometry(2.3,1.6),toon(0xffffff,{map:cv2,side:T3.DoubleSide}));aw.position.set(.8,2.3,1.74);aw.rotation.x=-Math.PI/2+.28;aw.castShadow=true;G.add(aw);
+      const vt=pixTex(32,6,(g,w,h)=>{for(let x=0;x<w;x++){const sc=x%4;g.fillStyle=Math.floor(x/4)%2?pal.stripe:'#efe2c4';const hh=h-(sc===0||sc===3?1:0);g.fillRect(x,0,1,hh)}});
+      vt.wrapS=T3.RepeatWrapping;const val=new T3.Mesh(new T3.PlaneGeometry(2.3,.24),toon(0xffffff,{map:vt,side:T3.DoubleSide,transparent:true,alphaTest:.5}));
+      val.position.set(.8,2.04,2.5);G.add(val);
+      for(const x of [-.32,1.92]){const p=new T3.Mesh(new T3.CylinderGeometry(.035,.04,2.1,5),toon(0x7a5a3c));p.position.set(x,1.02,2.5);p.castShadow=true;G.add(p);
+}
+      setStringLights(new T3.Vector3(1.95,2.02,2.52));
+    }else setStringLights(new T3.Vector3(1.62,2.42,1.04));
+  },
+  roof(id){clearGroup(rvParts.roof);const G=rvParts.roof;if(id==='none')return;
+    const P=[];for(const z of [-.78,.78])P.push(box(3.0,.05,.05,-.45,3.03,z,trimC));
+    for(const x of [-1.75,-.75,.25,1.0])P.push(box(.05,.05,1.6,x,3.03,0,trimC));
+    for(const x of [-1.85,1.1])for(const z of [-.78,.78])P.push(box(.05,.1,.05,x,2.98,z,trimC));
+    if(id==='rackbox'){P.push(box(1.25,.3,.78,-1.05,3.21,-.05,'#3b4048'),box(1.27,.04,.8,-1.05,3.37,-.05,'#2f343b'),box(.06,.05,.1,-.42,3.22,.36,'#c9a25a'));
+      P.push(part(new T3.CylinderGeometry(.13,.13,.7,7).rotateX(Math.PI/2).translate(.15,3.19,.05),'#8c4a32'),box(.36,.2,.32,.72,3.16,-.22,'#3f7a70'),box(.38,.02,.04,.72,3.27,-.22,'#2c2a28'));}
+    const m=new T3.Mesh(merge(P),toon(0xffffff,{vertexColors:true}));m.castShadow=true;G.add(m)},
+  detail(id){clearGroup(rvParts.detail);for(const w of rvParts.wheels)w.geometry=id==='lantern'?wheelWW:wheelStd;if(id!=='lantern')return;const G=rvParts.detail;
+    const lx=-.34,ly=1.5;
+    const P=[box(.04,.04,.22,lx,ly+.3,1.1,'#2c2a28'),box(.02,.08,.02,lx,ly+.24,1.2,'#2c2a28'),box(.14,.04,.14,lx,ly+.19,1.2,'#3a3430'),box(.14,.03,.14,lx,ly-.02,1.2,'#3a3430'),box(.07,.04,.07,lx,ly+.23,1.2,'#3a3430')];
+    for(const [dx,dz] of [[-.06,-.06],[.06,-.06],[-.06,.06],[.06,.06]])P.push(box(.016,.2,.016,lx+dx,ly+.085,1.2+dz,'#3a3430'));
+    P.push(box(3.0,.04,.03,-.35,.62,1.02,'#cfcac0'));// bright trim strip along the sill
+    const m=new T3.Mesh(merge(P),toon(0xffffff,{vertexColors:true}));G.add(m);
+    const glow=new T3.Mesh(new T3.BoxGeometry(.11,.18,.11),lanternGlow);glow.position.set(lx,ly+.085,1.2);G.add(glow)}
+};
+
+/* ==========================================================================
+   Interior: the rear dinette window nook (real geometry, layer 1).
+   Built around the hero window; dimensions cheated a little for comfort.
+   ========================================================================== */
+/* Interior surfaces ignore the outdoor sun: they are lit by an art-directed mix of
+   ambient, daylight spilling in from the hero window, and a stepped warm lamp pool. */
+const IU={uAmb:{value:C('#000')},uWin:{value:C('#000')},uLamp:{value:C('#000')},uLampP:{value:new T3.Vector3()},uWinP:{value:new T3.Vector3()}};
+function inMat(color,o={}){
+  const m=new T3.ShaderMaterial({side:o.side||T3.FrontSide,uniforms:{...IU,uCol:{value:C(color)},map:{value:o.map||null},uEmit:{value:o.emit||0}},
+    defines:o.map?{USE_MAP_:1}:{},
+    vertexShader:`varying vec3 vN,vW;varying vec2 vUv;void main(){vec4 w=modelMatrix*vec4(position,1.);vW=w.xyz;vN=normalize(mat3(modelMatrix)*normal);
+      #ifdef USE_MAP_
+      vUv=uv;
+      #endif
+      gl_Position=projectionMatrix*viewMatrix*w;}`,
+    fragmentShader:`uniform vec3 uAmb,uWin,uLamp,uLampP,uWinP,uCol;uniform float uEmit;uniform sampler2D map;varying vec3 vN,vW;varying vec2 vUv;
+            void main(){vec3 b=uCol;
+        #ifdef USE_MAP_
+        b*=texture2D(map,vUv).rgb;
+        #endif
+        vec3 N=normalize(gl_FrontFacing?vN:-vN);
+        vec3 ld=uLampP-vW;float d=length(ld);float lk=(max(dot(N,ld/d),0.)*.6+.4)/(1.+d*d*.75);
+        vec3 wd=uWinP-vW;float wk=(max(dot(N,normalize(wd)),0.)*.6+.4)/(1.+dot(wd,wd)*.35);wk=floor(wk*4.+.5)/4.;
+        vec3 c=b*(uAmb+uWin*wk+uLamp*lk)+b*uEmit;
+        gl_FragColor=vec4(c,1.);}`});
+  return m;
+}
+const rvInt=new T3.Group();rvInt.position.copy(rvExt.position);scene.add(rvInt);
+let mugSteam;{
+  const wood=pixTex(32,32,(g,w,h)=>{const r=rng(3);for(let x=0;x<w;x+=4){const c=['#c49a72','#c9a078','#be946c','#c69c74'][(r()*4)|0];g.fillStyle=c;g.fillRect(x,0,4,h);g.fillStyle='rgba(90,55,30,.28)';g.fillRect(x,0,1,h);
+    for(let k=0;k<2;k++){g.fillStyle='rgba(90,55,30,.14)';g.fillRect(x+1+((r()*2)|0),(r()*h)|0,1,2+((r()*3)|0))}}});
+  wood.wrapS=wood.wrapT=T3.RepeatWrapping;
+  const wallM=(rx,ry)=>{const t=wood.clone();t.needsUpdate=true;t.repeat.set(rx,ry);return inMat(0xffffff,{map:t})};
+  const add=(g,m,x,y,z,ry=0)=>{const o=new T3.Mesh(g,m);o.position.set(x,y,z);o.rotation.y=ry;o.layers.set(LAYER_IN);o.receiveShadow=false;rvInt.add(o);return o};
+  const L=-2.28,Rr=.05,F=.45,Ct=2.62,S=WIN.z,Nz=-.97,wx=WIN.x,w0=WIN.x-WIN.w/2,w1=WIN.x+WIN.w/2,y0=WIN.y-WIN.h/2,y1=WIN.y+WIN.h/2;
+  // window wall (faces the camera: -z), built around the opening
+  const ww=Rr-L;
+  add(new T3.PlaneGeometry(ww,y0-F),wallM(4,1),(L+Rr)/2,(F+y0)/2,S,Math.PI);
+  add(new T3.PlaneGeometry(ww,Ct-y1),wallM(4,.6),(L+Rr)/2,(y1+Ct)/2,S,Math.PI);
+  add(new T3.PlaneGeometry(w0-L,y1-y0),wallM(1,1),(L+w0)/2,WIN.y,S,Math.PI);
+  add(new T3.PlaneGeometry(Rr-w1,y1-y0),wallM(1.5,1),(w1+Rr)/2,WIN.y,S,Math.PI);
+  // rear wall (right of view) with the small secondary window
+  const sw={z:S-.42,y:1.9,w:.32,h:.46};
+  add(new T3.PlaneGeometry(S-Nz,Ct-F),wallM(3,2),L,(F+Ct)/2,(S+Nz)/2,Math.PI/2).visible=false;
+  const rw=(z0,z1,ya,yb)=>add(new T3.PlaneGeometry(z1-z0,yb-ya),wallM(1,1),L,(ya+yb)/2,(z0+z1)/2,Math.PI/2);
+  rw(Nz,sw.z-sw.w/2,F,Ct);rw(sw.z+sw.w/2,S,F,Ct);rw(sw.z-sw.w/2,sw.z+sw.w/2,F,sw.y-sw.h/2);rw(sw.z-sw.w/2,sw.z+sw.w/2,sw.y+sw.h/2,Ct);
+  const sgm=new T3.ShaderMaterial({transparent:true,depthWrite:false,side:T3.DoubleSide,uniforms:{...glassMat.uniforms,uAsp:{value:sw.w/sw.h},uS:{value:1.5}},vertexShader:glassMat.vertexShader,fragmentShader:glassMat.fragmentShader});
+  const sg=add(new T3.PlaneGeometry(sw.w,sw.h),sgm,L+.005,sw.y,sw.z,Math.PI/2);
+  {const f2=inMat(0xeadbbd);add(new T3.BoxGeometry(.06,.05,sw.w+.1),f2,L+.02,sw.y-sw.h/2-.02,sw.z);add(new T3.BoxGeometry(.06,.05,sw.w+.1),f2,L+.02,sw.y+sw.h/2+.02,sw.z);
+   add(new T3.BoxGeometry(.06,sw.h+.08,.05),f2,L+.02,sw.y,sw.z-sw.w/2-.02);add(new T3.BoxGeometry(.06,sw.h+.08,.05),f2,L+.02,sw.y,sw.z+sw.w/2+.02);}
+  // ceiling, floor, the partition on the left (rest of the camper continues beyond it)
+  const ceil=add(new T3.PlaneGeometry(Rr-L+1.2,S-Nz),inMat(0xe8dcc4),(L+Rr)/2+.6,Ct,(S+Nz)/2);ceil.rotation.x=Math.PI/2;
+  const floor=add(new T3.PlaneGeometry(Rr-L+1.2,S-Nz),inMat(0x6a4a34),(L+Rr)/2+.6,F,(S+Nz)/2);floor.rotation.x=-Math.PI/2;
+  const part2=add(new T3.BoxGeometry(.08,Ct-F,.9),wallM(.6,2),Rr+.02,(F+Ct)/2,S-.45);
+  const cab=add(new T3.BoxGeometry(.5,.55,.6),inMat(0xd9c39a),Rr-.22,Ct-.35,S-.32);
+  const gIn=add(new T3.PlaneGeometry(WIN.w,WIN.h),new T3.ShaderMaterial({transparent:true,depthWrite:false,side:T3.DoubleSide,uniforms:{...glassMat.uniforms,uS:{value:1.9}},vertexShader:glassMat.vertexShader,fragmentShader:glassMat.fragmentShader}),wx,WIN.y,S+.01,Math.PI);
+  // window frame, sill, curtains
+  const fm=inMat(0xeadbbd);
+  add(new T3.BoxGeometry(WIN.w+.16,.07,.2),fm,wx,y0-.02,S-.08);add(new T3.BoxGeometry(WIN.w+.16,.07,.08),fm,wx,y1+.03,S-.03);
+  add(new T3.BoxGeometry(.07,WIN.h+.1,.08),fm,w0-.04,WIN.y,S-.03);add(new T3.BoxGeometry(.07,WIN.h+.1,.08),fm,w1+.04,WIN.y,S-.03);
+  add(new T3.BoxGeometry(.04,WIN.h,.06),fm,wx,WIN.y,S-.02);
+  const cm=inMat(0xd28a4a),cm2=inMat(0xb8703a);
+  for(let i=0;i<4;i++){add(new T3.BoxGeometry(.07,WIN.h+.32,.05),i%2?cm2:cm,w0-.13+i*.065,WIN.y-.04,S-.12);add(new T3.BoxGeometry(.07,WIN.h+.32,.05),i%2?cm2:cm,w1-.07+i*.065,WIN.y-.04,S-.12)}
+  add(new T3.BoxGeometry(WIN.w+.7,.03,.03),inMat(0x3a3030),wx,y1+.12,S-.12);
+  // tiny fairy lights along the top of the window
+  const fl=new T3.InstancedMesh(new T3.SphereGeometry(.011,4,3),new T3.MeshBasicMaterial({color:0xffffff}),11);fl.layers.set(LAYER_IN);
+  for(let i=0;i<11;i++){const t=i/10;place(fl,i,w0+t*WIN.w,y1+.08-Math.sin(t*Math.PI)*.04,S-.11,1);fl.setColorAt(i,C(['#ffd38a','#ffb870','#ffe6b0'][i%3]))}rvInt.add(fl);rvInt.userData.fairy=fl;
+  // table, bench cushion, blanket
+  const tm=inMat(0xb07a4c);
+  add(new T3.BoxGeometry(1.6,.06,.85),tm,wx+.05,1.16,S-.45);add(new T3.BoxGeometry(1.6,.04,.04),inMat(0x8a5a38),wx+.05,1.12,S-.88);
+  add(new T3.BoxGeometry(.5,.5,1.4),inMat(0x3f6d66),L+.3,.78,S-.75);
+  add(new T3.BoxGeometry(.18,.55,1.4),inMat(0x3f6d66),L+.14,1.15,S-.75);
+  const bl=pixTex(8,8,(g)=>{for(let y=0;y<8;y++)for(let x=0;x<8;x++){g.fillStyle=(x+y)%4<2?'#d9b46a':'#c25a3a';g.fillRect(x,y,1,1)}});
+  add(new T3.BoxGeometry(.52,.12,.7),inMat(0xffffff,{map:bl}),L+.32,1.08,S-1.0);
+  // lamp, mug, plant, open notebook
+  const lx=w1-.16,lz=S-.42;
+  add(new T3.CylinderGeometry(.05,.065,.03,8),inMat(0x9a7a3a),lx,1.205,lz);add(new T3.CylinderGeometry(.012,.012,.24,5),inMat(0x9a7a3a),lx,1.33,lz);
+  const shade=add(new T3.CylinderGeometry(.05,.095,.12,8,1,true),new T3.MeshBasicMaterial({color:0xffc98a,side:T3.DoubleSide}),lx,1.47,lz);
+  lampLight.position.set(RV.x+wx,GY+y0+.2,RV.z+S+.9);IU.uLampP.value.set(RV.x+lx,GY+1.5,RV.z+lz);IU.uWinP.value.set(RV.x+WIN.x,GY+WIN.y-.1,RV.z+S+.4);
+  const mx=w0+.35,mz=S-.55;add(new T3.CylinderGeometry(.06,.055,.13,8),inMat(0x3f6d8a),mx,1.255,mz);
+  const hdl=add(new T3.TorusGeometry(.035,.01,4,8),inMat(0x3f6d8a),mx+.065,1.26,mz);hdl.rotation.y=0;
+  add(new T3.CylinderGeometry(.065,.05,.1,6),inMat(0xb05a3a),w0+.2,y0+.08,S-.1);
+  for(let i=0;i<6;i++){const a=i/6*Math.PI*2,lf=add(new T3.ConeGeometry(.03,.16,3),inMat(0x5d8a4a),w0+.2+Math.cos(a)*.04,y0+.2,S-.1+Math.sin(a)*.03);lf.rotation.z=Math.cos(a)*.5;lf.rotation.x=Math.sin(a)*.5}
+  const nb=pixTex(16,10,(g,w,h)=>{g.fillStyle='#f3ead8';g.fillRect(0,0,w,h);g.fillStyle='#d8ccb4';g.fillRect(7,0,2,h);g.fillStyle='#b9ab92';for(let y=2;y<h-1;y+=2){g.fillRect(1,y,5,1);g.fillRect(10,y,5,1)}});
+  const book=add(new T3.PlaneGeometry(.55,.36),inMat(0xffffff,{map:nb,emit:.12}),wx-.05,1.195,S-.55);book.rotation.x=-Math.PI/2;book.rotation.z=.12;
+  add(new T3.CylinderGeometry(.008,.008,.24,4),inMat(0x2c2c34),wx+.3,1.2,S-.5).rotation.set(Math.PI/2,0,.6);
+  // steam from the mug
+  const sp=new T3.BufferGeometry(),n=14,pp=new Float32Array(n*3),ph=new Float32Array(n);for(let i=0;i<n;i++){ph[i]=i/n}
+  sp.setAttribute('position',new T3.BufferAttribute(pp,3));sp.setAttribute('ph',new T3.BufferAttribute(ph,1));
+  mugSteam=new T3.Points(sp,new T3.ShaderMaterial({transparent:true,depthWrite:false,uniforms:{uTime:U.time,uSize:{value:3}},
+    vertexShader:`attribute float ph;uniform float uTime,uSize;varying float vA;void main(){float k=fract(ph+uTime*.12);vec3 p=position+vec3(sin(k*9.+ph*20.)*.03,k*.35,cos(k*7.)*.02);vA=(1.-k)*smoothstep(0.,.15,k);vec4 mv=modelViewMatrix*vec4(p,1.);gl_PointSize=uSize;gl_Position=projectionMatrix*mv;}`,
+    fragmentShader:`varying float vA;void main(){gl_FragColor=vec4(1.,.97,.92,vA*.28);}`}));
+  mugSteam.position.set(mx,1.33,mz);mugSteam.layers.set(LAYER_IN);rvInt.add(mugSteam);
+  // far (north) wall with a small shelf: only seen from outside, through the hero window, and later when the camera turns around
+  add(new T3.PlaneGeometry(Rr-L+1.2,Ct-F),wallM(4,2),(L+Rr)/2+.6,(F+Ct)/2,Nz);
+  add(new T3.BoxGeometry(.9,.03,.18),inMat(0x9a6a44),wx,1.95,Nz+.09);
+  [['#b4532f',.05,.2],['#3f6d66',.04,.17],['#e2ae62',.05,.22],['#5a4a6a',.035,.16]].forEach(([c,w,h],i)=>add(new T3.BoxGeometry(w,h,.13),inMat(c),wx-.3+i*.065,1.965+h/2,Nz+.09));
+  add(new T3.BoxGeometry(.3,.22,.02),inMat(0xeadbbd),wx+.12,2.32,Nz+.01);add(new T3.PlaneGeometry(.24,.16),inMat(0x5d8a6a,{emit:.1}),wx+.12,2.32,Nz+.025);
+  rvInt.userData={shade,sg,fairy:fl,glassIn:gIn};
+}
+
+/* ==========================================================================
+   Weather particles: rain, leaves, fireflies
+   ========================================================================== */
+const rainMat=new T3.ShaderMaterial({transparent:true,depthWrite:false,fog:false,uniforms:{uTime:U.time,uCenter:{value:new T3.Vector3()},uSlant:{value:.12},uCol:{value:C('#d8dee8')},uA:{value:.5}},
+  vertexShader:`attribute vec3 seed;attribute float endp;uniform float uTime,uSlant;uniform vec3 uCenter;
+  void main(){vec3 B=vec3(26.,13.,26.);float sp=9.+seed.y*4.;float f=mod(seed.y*B.y*7.-uTime*sp,B.y);vec3 p=vec3(uCenter.x+(seed.x-.5)*B.x,f-1.2,uCenter.z+(seed.z-.5)*B.z);
+    p.x+=uSlant*f;p+=endp*vec3(uSlant*.45,.45,0.);gl_Position=projectionMatrix*viewMatrix*vec4(p,1.);}`,
+  fragmentShader:`uniform vec3 uCol;uniform float uA;void main(){gl_FragColor=vec4(uCol,uA);}`});
+let rain;{const n=Q.rain,g=new T3.BufferGeometry(),pos=new Float32Array(n*6),sd=new Float32Array(n*6),ep=new Float32Array(n*2),r=rng(71);
+  for(let i=0;i<n;i++){const s=[r(),r(),r()];for(let e=0;e<2;e++){sd.set(s,(i*2+e)*3);ep[i*2+e]=e}}
+  g.setAttribute('position',new T3.BufferAttribute(pos,3));g.setAttribute('seed',new T3.BufferAttribute(sd,3));g.setAttribute('endp',new T3.BufferAttribute(ep,1));
+  rain=new T3.LineSegments(g,rainMat);rain.frustumCulled=false;rain.visible=false;scene.add(rain);hideInReflection.push(rain)}
+const leaves={n:36,list:[]};{const im=new T3.InstancedMesh(new T3.PlaneGeometry(.14,.09),new T3.MeshBasicMaterial({side:T3.DoubleSide}),36),r=rng(81);
+  for(let i=0;i<36;i++){leaves.list.push({x:-14+r()*10,y:1+r()*4,z:-10+r()*20,vx:2+r()*2,ph:r()*6,rs:2+r()*4});im.setColorAt(i,C(['#d2803e','#e0a64c','#b9532f'][i%3]))}
+  im.visible=false;scene.add(im);leaves.m=im;hideInReflection.push(im)}
+const flies=new T3.Points((()=>{const g=new T3.BufferGeometry(),n=24,p=new Float32Array(n*3),ph=new Float32Array(n),r=rng(91);
+  for(let i=0;i<n;i++){const a=r()*6.28,e=1.05+r()*.25;p.set([Math.cos(a)*PR.x*e,.4+r()*1.1,Math.sin(a)*PR.z*e],i*3);ph[i]=r()*10}
+  g.setAttribute('position',new T3.BufferAttribute(p,3));g.setAttribute('ph',new T3.BufferAttribute(ph,1));return g})(),
+  new T3.ShaderMaterial({transparent:true,depthWrite:false,fog:false,uniforms:{uTime:U.time},
+    vertexShader:`attribute float ph;uniform float uTime;varying float vA;void main(){vec3 p=position+vec3(sin(uTime*.4+ph)*.5,sin(uTime*.6+ph*2.)*.25,cos(uTime*.35+ph)*.5);vA=smoothstep(.2,1.,sin(uTime*1.3+ph*3.));gl_PointSize=2.;gl_Position=projectionMatrix*modelViewMatrix*vec4(p,1.);}`,
+    fragmentShader:`varying float vA;void main(){gl_FragColor=vec4(1.,.88,.45,vA);}`}));
+flies.visible=false;scene.add(flies);
+
+/* ==========================================================================
+   Time & weather presets
+   ========================================================================== */
+const TIMES={
+  morning:{top:'#5f8fc8',mid:'#a9c3e0',hor:'#f0ddc8',sun:'#fff1d8',dir:[.75,.42,.35],sunI:.95,hemiS:'#d6e2f0',hemiG:'#5f6448',hemiI:.62,fog:'#dbe2ea',fogN:16,fogF:95,
+    deep:'#3a6070',shallow:'#6d8c80',spec:'#fff6e4',lights:.2,stars:0,moon:0,cloud:'#ffffff',cloudE:'#3a3a40',fire:0,inside:.55},
+  midday:{top:'#4a82c4',mid:'#98bde0',hor:'#dfe7ea',sun:'#fff8ea',dir:[.35,.9,.45],sunI:1.05,hemiS:'#d8e4f0',hemiG:'#68704e',hemiI:.68,fog:'#d2dee6',fogN:20,fogF:110,
+    deep:'#33627a',shallow:'#6a9286',spec:'#ffffff',lights:0,stars:0,moon:0,cloud:'#ffffff',cloudE:'#4a5260',fire:0,inside:.45},
+  golden:{top:'#5866a6',mid:'#c497ae',hor:'#f8c49a',sun:'#ffd2a0',dir:[-.85,.24,.4],sunI:1.2,hemiS:'#c6aed0',hemiG:'#5c5642',hemiI:.68,fog:'#e8b8a4',fogN:18,fogF:100,
+    deep:'#35566a',shallow:'#728274',spec:'#ffe2b0',lights:.8,stars:0,moon:0,cloud:'#ffd6c0',cloudE:'#4a3040',fire:.6,inside:.75},
+  night:{top:'#070a20',mid:'#141c44',hor:'#2a3264',sun:'#e8ecff',dir:[.35,.62,-.55],sunI:.3,hemiS:'#2a3468',hemiG:'#0e1018',hemiI:.42,fog:'#161d3c',fogN:14,fogF:80,
+    deep:'#101a30',shallow:'#1e2a40',spec:'#c8d4ff',lights:1,stars:1,moon:1,cloud:'#3a4270',cloudE:'#0a0c1a',fire:1.4,inside:1}
+};
+const TIMES_IN={ // interior light: ambient, daylight through the hero window (clear/rain), lamp strength
+  morning:{amb:'#6a6670',win:'#b8c2d0',winR:'#8a92a0',lamp:.35},
+  midday:{amb:'#726e70',win:'#c8d2da',winR:'#8e96a2',lamp:.2},
+  golden:{amb:'#5a4a4a',win:'#e8b088',winR:'#9a8a88',lamp:.75},
+  night:{amb:'#3a2c2a',win:'#2a3250',winR:'#222a40',lamp:1.25}};
+function applyState(){
+  const t=TIMES[ST.time],w=ST.weather,rainy=w==='rain',windy=w==='windy';
+  const ov=c=>{const k=C(c),g=k.r*.3+k.g*.59+k.b*.11;return k.lerp(new T3.Color(g,g,g),.7).multiplyScalar(t.moon?.75:.82)};
+  const col=c=>rainy?ov(c):C(c);
+  skyMat.uniforms.cTop.value=col(t.top);skyMat.uniforms.cMid.value=col(t.mid);skyMat.uniforms.cHor.value=col(t.hor);
+  const sd=new T3.Vector3(...t.dir).normalize();skyMat.uniforms.sunDir.value.copy(sd);skyMat.uniforms.sunCol.value=C(t.sun);
+  skyMat.uniforms.uStars.value=rainy?0:t.stars;skyMat.uniforms.uMoon.value=t.moon;skyMat.uniforms.uDisk.value=rainy?0:1;
+  sun.position.copy(sd.clone().multiplyScalar(40)).add(sun.target.position);sun.color=C(t.sun);sun.intensity=t.sunI*(rainy?.35:1);
+  hemi.color=col(t.hemiS);hemi.groundColor=C(t.hemiG);hemi.intensity=t.hemiI*(rainy?(t.moon?1.55:1.1):1);
+  scene.fog=new T3.Fog(rainy?(t.moon?C('#262d44'):ov(t.hor).lerp(ov(t.mid),.35)):col(t.fog),t.fogN*(rainy?.55:1),t.fogF*(rainy?.55:1));
+  const wu=waterMat.uniforms;wu.cDeep.value=col(t.deep);wu.cShallow.value=col(t.shallow);wu.cSpec.value=C(t.spec);wu.sunDir.value.copy(sd);wu.uRain.value=rainy?1:0;wu.uSpecK.value=rainy?.15:1;
+  cloudMat.color=col(t.cloud);cloudMat.emissive=C(rainy?(t.moon?'#2a3046':'#4a4e58'):t.cloudE);buildClouds(windy?12:9);clouds.visible=!rainy;
+  U.wind.value=windy?2.8:rainy?1.4:1;U.lean.value=windy?.55:0;if(reducedMotion){U.wind.value*=.45;U.lean.value*=.5}
+  const lv=clamp(t.lights+(rainy?.45:0));L.lv=lv;
+  camp.lights.material.color=C(lv>.5?'#ffffff':'#6a5a4a');fireLight.intensity=rainy?0:t.fire;camp.flame.visible=!rainy&&t.fire>0;
+  dockLamp.material.color=C(lv>.5?'#ffc070':'#8a7a64');
+  lampLight.intensity=.12+lv*.3;
+  const ins=TIMES_IN[ST.time],rk=rainy?.55:1;IU.uAmb.value=C(ins.amb).multiplyScalar(rainy?.85:1);IU.uWin.value=C(rainy?ins.winR:ins.win).multiplyScalar(rk);IU.uLamp.value=C('#ffb26a').multiplyScalar(ins.lamp+(rainy?.25:0));
+  rvInt.userData.shade.material.color=C(lv>.4?'#ffd29a':'#e8c8a0');rvInt.userData.fairy.material.color=C(lv>.5?'#ffffff':'#8a7a6a');
+  glassMat.uniforms.uRain.value=rainy?1:0;
+  rain.visible=rainy;rainMat.uniforms.uSlant.value=windy?.5:.14;rainMat.uniforms.uCol.value=C(t.moon?'#8a96c0':'#d8dee8');rainMat.uniforms.uA.value=t.moon?.26:.38;
+  leaves.m.visible=windy;flies.visible=!!t.moon&&!rainy;
+  L.insideK=t.inside;
+  lanternGlow.color=C(lv>.5?'#ffd27a':'#e2d2a8');
+  fogBase.n=scene.fog.near;fogBase.f=scene.fog.far;
+}
+const L={lv:.8,insideK:.8},fogBase={n:16,f:95};
+
+/* ==========================================================================
+   Cameras, sizing, render pipeline (low-res targets → dithered composite)
+   ========================================================================== */
+const cam=new T3.PerspectiveCamera(36,1,.05,600);cam.layers.enable(LAYER_IN);
+const camB=new T3.PerspectiveCamera(36,1,.05,600);camB.layers.enable(LAYER_IN);
+let IW=320,IH=200,portrait=false;const PX={S:4,dpr:1};
+const rtA=new T3.WebGLRenderTarget(4,4,{minFilter:T3.NearestFilter,magFilter:T3.NearestFilter}),rtB=rtA.clone();
+const bay=new T3.DataTexture(new Uint8Array([0,8,2,10,12,4,14,6,3,11,1,9,15,7,13,5].flatMap(v=>[v*16,v*16,v*16,255])),4,4,T3.RGBAFormat);
+bay.minFilter=bay.magFilter=T3.NearestFilter;bay.wrapS=bay.wrapT=T3.RepeatWrapping;bay.needsUpdate=true;
+const post=new T3.ShaderMaterial({uniforms:{tA:{value:rtA.texture},tB:{value:rtB.texture},tBay:{value:bay},uMix:{value:0},uRes:{value:new T3.Vector2()}},
+  vertexShader:`varying vec2 vUv;void main(){vUv=uv;gl_Position=vec4(position.xy,0.,1.);}`,
+  fragmentShader:`uniform sampler2D tA,tB,tBay;uniform float uMix;uniform vec2 uRes;varying vec2 vUv;
+  void main(){vec4 a=texture2D(tA,vUv);float th=texture2D(tBay,vUv*uRes/4.).r+.03;vec4 c=a;if(uMix>0.){vec4 b=texture2D(tB,vUv);c=mix(a,b,smoothstep(0.,1.,uMix));}
+    vec2 q=vUv-.5;c.rgb*=1.-dot(q,q)*.55;gl_FragColor=c;}`,depthTest:false,depthWrite:false});
+const postScene=new T3.Scene(),postCam=new T3.OrthographicCamera(-1,1,1,-1,0,1);postScene.add(new T3.Mesh(new T3.PlaneGeometry(2,2),post));
+function size(){
+  const dpr=Math.min(window.devicePixelRatio||1,3),cw=innerWidth,ch=innerHeight,dw=Math.round(cw*dpr),dh=Math.round(ch*dpr);portrait=ch>cw*1.05;
+  const S=Math.max(2,Math.round(portrait?dw/(mobile?220:240):dh/(mobile?280:300)));
+  IW=Math.ceil(dw/S);IH=Math.ceil(dh/S);PX.S=S;PX.dpr=dpr;renderer.setSize(IW,IH,false);
+  cv.style.width=(IW*S/dpr)+'px';cv.style.height=(IH*S/dpr)+'px';cv.style.left=(Math.round((dw-IW*S)/2)/dpr)+'px';cv.style.top=(Math.round((dh-IH*S)/2)/dpr)+'px';
+  rtA.setSize(IW,IH);rtB.setSize(IW,IH);reflRT.setSize(Math.max(2,Math.round(IW*Q.refl)),Math.max(2,Math.round(IH*Q.refl)));post.uniforms.uRes.value.set(IW,IH);
+  for(const c of [cam,camB]){c.aspect=IW/IH;c.updateProjectionMatrix()}
+}
+const vfov=(hdeg)=>2*Math.atan(Math.tan(hdeg*Math.PI/360)/(IW/IH))*180/Math.PI;
+/* poses */
+function poses(){
+  const wx=winWorld.x,wy=winWorld.y,wz=winWorld.z;
+  return {
+    ext:extPose(VIEW.angle),
+    garage:garagePose(),
+    win:{p:[wx,wy-.02,wz+1.25],t:[wx,wy,wz],f:portrait?vfov(62):38},
+    inEntry:{p:[wx,wy-.05,wz-.35],t:[wx,wy-.12,wz+6],f:portrait?vfov(72):52},
+    seat: portrait?{p:[wx+.05,GY+1.92,wz-1.4],t:[wx-.6,GY-1.0,wz+5.2],f:vfov(64)}:{p:[wx+.08,GY+1.92,wz-1.6],t:[wx-.75,GY+1.3,wz+6],f:54}
+  };
+}
+/* elevated three-quarter view: orbit a point between the camper and the pond */
+const VIEW={angle:30,tune:null};
+const EXT={30:{land:{D:31,f:31,t:[.4,0,-3.6]},port:{D:18,hf:54,t:[.9,0,-4.4]}},40:{land:{D:30,f:32,t:[.4,0,-3.4]},port:{D:17.5,hf:54,t:[.9,0,-4.2]}}};
+function extPose(ang){const c={...EXT[ang][portrait?'port':'land'],...(VIEW.tune||{})},a=ang*Math.PI/180,az=c.az!=null?c.az:-.05,t=c.t;
+  const p=[t[0]+Math.sin(az)*c.D*Math.cos(a),t[1]+c.D*Math.sin(a),t[2]+Math.cos(az)*c.D*Math.cos(a)];
+  return{p,t,f:c.f||vfov(c.hf)}}
+function garagePose(){const t=[RV.x+.45,GY+1.25,RV.z+.7],a=20*Math.PI/180,az=.4,D=portrait?13:13.5;
+  const p=[t[0]+Math.sin(az)*D*Math.cos(a),t[1]+D*Math.sin(a),t[2]+Math.cos(az)*D*Math.cos(a)];
+  return{p,t,f:portrait?vfov(52):30}}
+function setCam(c,P){c.position.set(...P.p);c.lookAt(...P.t);c.fov=P.f;c.updateProjectionMatrix();c.updateMatrixWorld()}
+function lerpPose(a,b,k){return{p:a.p.map((v,i)=>lerp(v,b.p[i],k)),t:a.t.map((v,i)=>lerp(v,b.t[i],k)),f:lerp(a.f,b.f,k)}}
+
+/* ---------- scene mode & transitions ---------- */
+// mode: 'out' | 'entering' | 'in' | 'exiting'. The app drives these through World.enter/exit.
+let mode='out',tr=null;
+const viewK={focus:0,focusT:0,shift:0,shiftT:0,shiftY:0,shiftYT:0};   // garage framing blend, panel shift (CSS px)
+let reducedMotion=false,renderPaused=false;
+function setVisibility(inside){rvExt.userData.glass.visible=!inside;rvInt.userData.glassIn.visible=inside}
+function extNow(P){let e=viewK.focus>0?lerpPose(P.ext,P.garage,ease(viewK.focus)):P.ext;return reducedMotion?e:drift(e)}
+let quickVisit=false;
+function startEnter(done){
+  if(tr||mode!=='out')return false;mode='entering';
+  const today=new Date().toDateString();quickVisit=state.meta.walkDay===today;   // the full walk-in once a day; a quick one after that
+  if(!quickVisit){state.meta.walkDay=today;persist()}
+  tr={t:0,dur:reducedMotion?1.1:4.1,dir:1,done,speed:quickVisit&&!reducedMotion?2.6:1};return true;
+}
+function startExit(done){
+  if(tr||mode!=='in')return false;mode='exiting';tr={t:0,dur:reducedMotion?1.0:3.6,dir:-1,done,speed:quickVisit&&!reducedMotion?1.8:1};return true;
+}
+document.addEventListener('pointerdown',()=>{if(tr&&(mode==='entering'||mode==='exiting'))tr.speed=Math.max(tr.speed||1,5)},true);   // tap to skip
+function finishTr(m){const d=tr.done;tr=null;mode=m;if(d)setTimeout(d,0)}
+function stepTransition(dt){
+  const P=poses();tr.t+=dt*(tr.speed||1);const t=tr.t;
+  let pA=null,pB=null,mix=0;
+  if(reducedMotion){ // a short, still crossfade instead of the camera move
+    const k=clamp(t/tr.dur);
+    if(tr.dir>0){if(k>=1){finishTr('in');return{pA:P.seat,mix:0,inside:true}}return{pA:extNow(P),pB:P.seat,mix:k,insideA:false,insideB:true}}
+    if(k>=1){finishTr('out');return{pA:extNow(P),mix:0,inside:false}}return{pA:P.seat,pB:extNow(P),mix:k,insideA:true,insideB:false};
+  }
+  if(tr.dir>0){ // outside → push to window → dissolve → settle inside
+    if(t<2.2)pA=lerpPose(extNow(P),P.win,ease(t/2.2));else pA=lerpPose(P.win,{...P.win,p:[P.win.p[0],P.win.p[1],P.win.p[2]-.55]},easeOut(clamp((t-2.2)/.8)));
+    if(t>1.75){pB=lerpPose(P.inEntry,P.seat,easeOut(clamp((t-1.75)/2.35)));mix=clamp((t-1.75)/.75)}
+    if(t>=tr.dur){finishTr('in');return{pA:P.seat,mix:0,inside:true}}
+    return{pA,pB,mix,insideA:false,insideB:true};
+  }else{ // inside → lean to window → dissolve → pull back outside
+    if(t<1.6)pA=lerpPose(P.seat,P.inEntry,ease(t/1.6));else pA=P.inEntry;
+    if(t>1.2){pB=lerpPose(P.win,extNow(P),ease(clamp((t-1.2)/2.4)));mix=clamp((t-1.2)/.7)}
+    if(t>=tr.dur){finishTr('out');return{pA:extNow(P),mix:0,inside:false}}
+    return{pA,pB,mix,insideA:true,insideB:false};
+  }
+}
+function drift(P){const t=U.time.value;return{p:[P.p[0]+Math.sin(t*.045)*.28,P.p[1]+Math.sin(t*.033)*.09,P.p[2]],t:P.t,f:P.f}}
+function seatDrift(P){if(reducedMotion)return P;const t=U.time.value;return{p:[P.p[0]+Math.sin(t*.21)*.012,P.p[1]+Math.sin(t*.29)*.008,P.p[2]],t:[P.t[0]+Math.sin(t*.07)*.05,P.t[1],P.t[2]],f:P.f}}
+
+/* ---------- life ---------- */
+let fishRingI=0,nextRise=6;
+function updateLife(dt,t){
+  for(const f of fish){f.a+=dt*f.sp*(1+f.dart*3);f.b+=dt*f.sp*.73*(1+f.dart*3);f.dart=Math.max(0,f.dart-dt*.5);if(Math.random()<dt*.03)f.dart=1;
+    const x=Math.sin(f.a)*PR.x*f.rx,z=Math.sin(f.b*1.3+1)*PR.z*f.rz,nx=Math.sin(f.a+.05)*PR.x*f.rx,nz=Math.sin((f.b+.04)*1.3+1)*PR.z*f.rz;
+    f.m.position.x=x;f.m.position.z=z;const i=fish.indexOf(f),vis=.62*Math.max(0,Math.min(1,.35+Math.sin(t*.13+i*1.9)*.9))*Math.min(1,Math.max(0,(1.05-Math.hypot(x/PR.x,z/PR.z))*6));
+    waterMat.uniforms.fishP.value[i].set(x,z,Math.atan2(nz-z,nx-x),vis)}
+  nextRise-=dt;if(nextRise<=0&&ST.weather!=='rain'){nextRise=5+Math.random()*9;const f=fish[(Math.random()*fish.length)|0];const R=waterMat.uniforms.rings.value[fishRingI++%6];R.set(f.m.position.x,f.m.position.z,t,1)}
+  if(camp.flame.visible){const k=1+Math.sin(t*9)*.08+Math.sin(t*13.7)*.06;camp.flame.scale.set(1,k,1);fireLight.intensity=TIMES[ST.time].fire*(.9+.1*Math.sin(t*11))}
+  if(leaves.m.visible){const m=leaves.m;leaves.list.forEach((l,i)=>{l.x+=l.vx*dt;l.y+=Math.sin(t*1.7+l.ph)*.6*dt-.15*dt;l.z+=Math.sin(t*.9+l.ph)*.3*dt;if(l.x>14||l.y<0){l.x=-14;l.y=1+Math.random()*4;l.z=-10+Math.random()*20}
+    V3.set(l.x,l.y,l.z);QQ.setFromEuler(new T3.Euler(t*l.rs+l.ph,t*l.rs*.7,0));SC.set(1,1,1);M4.compose(V3,QQ,SC);m.setMatrixAt(i,M4)});m.instanceMatrix.needsUpdate=true}
+  rainMat.uniforms.uCenter.value.set(cam.position.x*.5,0,cam.position.z*.5-2);
+}
+
+/* ---------- render ---------- */
+function renderTo(rt,c,inside){
+  setVisibility(inside);
+  if(scene.fog){scene.fog.near=fogBase.n+(inside?0:18);scene.fog.far=fogBase.f+(inside?0:26)}
+  if(!inside&&(Math.abs(viewK.shift)>.5||Math.abs(viewK.shiftY)>.5)){c.setViewOffset(IW,IH,viewK.shift*PX.dpr/PX.S,viewK.shiftY*PX.dpr/PX.S,IW,IH)}else if(c.view&&c.view.enabled)c.clearViewOffset();
+  waterMat.uniforms.camPos.value.copy(c.position);
+  glassMat.uniforms.uWarm.value=inside?clamp(L.lv*.6):L.lv*.4;glassMat.uniforms.uTintA.value=inside?.05:(L.lv>.9?.05:.12+(1-L.lv)*.2);
+  renderReflection(c);
+  renderer.setRenderTarget(rt);renderer.clear();renderer.render(scene,c);
+}
+let last=0,paused=false,ready=false;const gov={n:0,sum:0,f:0,slow:false};
+function frame(now){
+  requestAnimationFrame(frame);
+  const dt=last?Math.min(.05,(now-last)/1000):0;last=now;
+  if(renderPaused&&!tr){ready=true;return}   // a full-height sheet hides the world: skip all work
+  // quality governor: if the first seconds run slow, lower reflection resolution and refresh shadows every third frame
+  if(ready&&gov.n<180&&dt>0){gov.sum+=dt;gov.n++;if(gov.n===180&&gov.sum/180>1/38){Q.refl=Math.min(Q.refl,.4);reflRT.setSize(Math.max(2,Math.round(IW*Q.refl)),Math.max(2,Math.round(IH*Q.refl)));renderer.shadowMap.autoUpdate=false;gov.slow=true}}
+  if(gov.slow&&(gov.f++%3===0))renderer.shadowMap.needsUpdate=true;
+  if(!paused){U.time.value+=dt;updateLife(dt,U.time.value)}
+  const k=1-Math.exp(-dt*(reducedMotion?12:2.2));
+  viewK.focus+=(viewK.focusT-viewK.focus)*k;viewK.shift+=(viewK.shiftT-viewK.shift)*(1-Math.exp(-dt*(reducedMotion?12:4)));viewK.shiftY+=(viewK.shiftYT-viewK.shiftY)*(1-Math.exp(-dt*(reducedMotion?12:4)));
+  const P=poses();let r={pA:mode==='in'?seatDrift(P.seat):extNow(P),mix:0,insideA:mode==='in'};
+  if(tr)r=stepTransition(dt)||r;
+  if(r.inside!==undefined)r.insideA=r.inside;
+  setCam(cam,r.pA);renderTo(rtA,cam,!!r.insideA);
+  if(r.pB&&r.mix>0){setCam(camB,r.pB);renderTo(rtB,camB,!!r.insideB);post.uniforms.uMix.value=r.mix}else post.uniforms.uMix.value=0;
+  renderer.setRenderTarget(null);renderer.render(postScene,postCam);
+  ready=true;
+}
+/* ==========================================================================
+   Talio app layer: store, reflections, journal focus mode, panels, RV
+   customization and unlocks. Everything is written fresh for the retreat.
+   ========================================================================== */
+const $=(q,r)=>(r||document).querySelector(q),$$=(q,r)=>[...(r||document).querySelectorAll(q)];
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,8);
+const X_SVG='<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M3 3l8 8M11 3l-8 8"/></svg>';
+const LOCK_SVG='<svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><rect x="2.5" y="5.5" width="7" height="5" rx="1"/><path d="M4 5.5V4a2 2 0 0 1 4 0v1.5"/></svg>';
+const osReduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ---------- store (this browser only) ---------- */
+const STORE='talio-home-v1';
+function defaults(){return{v:1,entries:[],tasks:[],
+  settings:{reflectionStyle:'curious',defaultInput:'talk',sound:false,reducedMotion:osReduced},
+  rv:{equipped:{exterior:{paint:'classic',awning:'none',roof:'none',detail:'none'},interior:{}},seen:[],announced:[]},
+  meta:{lastInput:'talk',savedTotal:0,draft:'',demoIdx:0},
+  dev:{angle:30,time:'auto',weather:'auto',sim:null,ai:'claude',voice:'live'}}}
+let storageOK=true;
+function load(){const d=defaults();try{const s=JSON.parse(localStorage.getItem(STORE)||'null');if(!s)return d;
+  return{v:1,entries:Array.isArray(s.entries)?s.entries:[],tasks:Array.isArray(s.tasks)?s.tasks:[],settings:{...d.settings,...s.settings},
+    rv:{equipped:{exterior:{...d.rv.equipped.exterior,...(s.rv&&s.rv.equipped&&s.rv.equipped.exterior)},interior:{...(s.rv&&s.rv.equipped&&s.rv.equipped.interior)}},seen:(s.rv&&s.rv.seen)||[],announced:(s.rv&&s.rv.announced)||[]},
+    meta:{...d.meta,...s.meta},dev:{...d.dev,...s.dev}}}catch(e){storageOK=false;return d}}
+let state=load();
+function persist(){try{localStorage.setItem(STORE,JSON.stringify(state));storageOK=true}catch(e){storageOK=false}}
+
+/* ---------- world clock and weather (never driven by mood) ---------- */
+const TIME_LABEL={morning:'Morning',midday:'Midday',golden:'Golden hour',night:'Night'};
+const WX_LABEL={clear:'Clear',rain:'Soft rain',windy:'Breezy'};
+function clockTime(d=new Date()){const h=d.getHours()+d.getMinutes()/60;return h>=5&&h<10?'morning':h>=10&&h<16.5?'midday':h>=16.5&&h<19.75?'golden':'night'}
+function worldWeather(d=new Date()){ // a gentle, seeded pattern: changes every three hours, mostly clear
+  const day=Math.floor((d.getTime()-d.getTimezoneOffset()*6e4)/864e5),block=Math.floor(d.getHours()/3);
+  const r=h2(day*7+3,block*13+1);return r<.6?'clear':r<.8?'windy':'rain'}
+let ST={time:'golden',weather:'clear'};
+function resolveWorld(){ST.time=state.dev.time==='auto'?clockTime():state.dev.time;ST.weather=state.dev.weather==='auto'?worldWeather():state.dev.weather}
+function updatePlace(){
+  const night=ST.time==='night';
+  $('#place').textContent='Pond retreat · '+(night&&ST.weather==='clear'?'Starry night':TIME_LABEL[ST.time]+(ST.weather==='clear'?'':' · '+WX_LABEL[ST.weather]));
+  $('#dockQ').textContent=PROMPTS[ST.time];
+}
+const PROMPTS={morning:'What would make today feel good?',midday:'How’s the day going so far?',golden:'How did today go?',night:'What’s on your mind tonight?'};
+function applyWorld(){resolveWorld();applyState();updatePlace();Sound.update()}
+
+/* ---------- reflections (prototype rules; the real version belongs to the AI layer) ----------
+   analyze(text, opts) → { title, reflection, mood, concern, followUp, tasks } */
+const Reflector=(()=>{
+  const CONCERN=/\b(hate (my )?life|want(ing)? to die|wish (i was|i were|i'?d never been) (dead|born)|kill(ing)? myself|end(ing)? (it all|my life|things)|suicid\w*|self[- ]?harm\w*|hurt(ing)? myself|cut(ting)? myself|no (reason|point) (to|in) (live|living|going on)|can'?t go on|better off without me|don'?t want to (be here|live|exist|wake up))\b/i;
+  const W={
+    low:/\b(tired|exhausted|drained|sad|lonely|alone|down|heavy|anxious|worried|worry|cried|crying|miss(ing|ed)?|grief|numb|stuck|empty|hurt|sick|low)\b/g,
+    frustrated:/\b(annoy\w*|angry|mad|frustrat\w*|stress\w*|overwhelm\w*|rough|ugh|hectic|irritat\w*|sucked|sucks|chaos|hate|late|ran long)\b/g,
+    happy:/\b(great|good|happy|fun|excited|proud|grateful|loved?|amazing|glad|laugh\w*|wonderful|lovely|finally|clicked|best)\b/g,
+    calm:/\b(quiet|calm|slow|rest\w*|peaceful|cozy|easy|relax\w*|still|gentle|tea|coffee|read(ing)?|nap)\b/g};
+  const TOPIC=[[/\b(work|job|office|meeting|client|boss|project|deadline|shift|layout|email)\b/,'at work','work'],[/\b(kids?|family|mom|dad|partner|wife|husband|son|daughter|parents)\b/,'with family','family time'],
+    [/\b(friends?|party|hung out)\b/,'with friends','time with friends'],[/\b(walk|walked|run|hike|park|outside|water|garden|bike)\b/,'outside','getting outside'],[/\b(sleep|slept|insomnia|night)\b/,null,null]];
+  const ADJ={calm:'A quiet',low:'A heavy',frustrated:'A rough',happy:'A good'};
+  const ASK={
+    calm:['What helped today feel steady?','Anything you want to carry into tomorrow?'],
+    low:['What would feel kind to yourself right now?','Is there one small thing that might make tomorrow lighter?'],
+    frustrated:['What took the most out of you?','Is there a part of it you can set down before tonight?'],
+    happy:['What made it feel good?','What do you want to remember about it?']};
+  const TASK=/\b(?:need to|needs to|have to|has to|got to|gotta|should|must|remember to|don'?t forget to|i'?ll|i will|going to|todo:?)\s+([^.!?;\n]+)/gi;
+  const SOFT=/^(?:probably|maybe|really|just|definitely|actually|also|finally|try to|go and)\s+/i;
+  const VAGUE=/^(be|feel|get better|relax|think|keep|stop|see|say|figure|try|do better|sleep)\b/i;
+  const WHEN=/\b(?:tomorrow|tonight|today|this (?:morning|afternoon|evening|weekend|week)|next week|on the weekend|later|soon|first thing|in the morning|(?:by|on) (?:monday|tuesday|wednesday|thursday|friday|saturday|sunday))\b/gi;
+  const period=d=>{const h=d.getHours();return h>=5&&h<12?'morning':h<17&&h>=12?'afternoon':h>=17&&h<22?'evening':'night'};
+  const count=(re,s)=>(s.match(re)||[]).length;
+  function tasksFrom(text){const out=[],seen=new Set();TASK.lastIndex=0;let m;
+    while((m=TASK.exec(text))&&out.length<5){
+      const clause=m[1].split(/\b(?:but|because|since|so that|so|which|if|though|when)\b/i)[0];
+      for(let t of clause.split(/\s+(?:and then|and|then)\s+(?=\w+\s+\w+)/i)){
+        t=t.trim().replace(/^(?:i\s+)?(?:also\s+|still\s+)?(?:need to|have to|got to|gotta|should|must|remember to|don'?t forget to|'?ll|will|am going to|going to)\s+/i,'');while(SOFT.test(t))t=t.replace(SOFT,'');
+        t=t.replace(WHEN,'').replace(/\s{2,}/g,' ').replace(/[\s,]+$/,'').replace(/^i\s+/i,'').trim();
+        if(!t||VAGUE.test(t)||t.split(/\s+/).length<2)continue;
+        if(t.length>60)t=t.slice(0,57).replace(/\s+\S*$/,'')+'…';
+        const k=taskKey(t);if(seen.has(k))continue;seen.add(k);out.push(t.charAt(0).toUpperCase()+t.slice(1))}}
+    return out}
+  function analyze(text,o){
+    const lower=text.toLowerCase(),wc=text.trim().split(/\s+/).filter(Boolean).length,when=new Date(o.at||Date.now()),per=period(when),talk=o.input==='talk';
+    if(CONCERN.test(text)){ // a separate, quiet path: no cheerful title, no tasks, a pointer to real support
+      return{title:'A hard moment',mood:'low',concern:true,followUp:null,tasks:[],
+        reflection:(talk?'That sounds really painful, and I’m glad you said it out loud instead of holding it alone.':'That sounds really painful, and I’m glad you wrote it down instead of holding it alone.')+(o.style==='minimal'?'':' You don’t have to work through this on your own. Reaching out to someone you trust, or to a support line, can help.')}}
+    const sc={low:count(W.low,lower),frustrated:count(W.frustrated,lower),happy:count(W.happy,lower),calm:count(W.calm,lower)*.8};
+    const neg=count(/\bnot (?:so |very |that |really )?(?:good|great|happy|fun|okay|ok)\b/g,lower);sc.happy-=neg*1.5;sc.low+=neg;
+    const turned=/\b(but|though|although|then)\b[^.!?]*\b(better|good|nice|okay|fine|helped|fun|lovely)\b/.test(lower);
+    let mood='calm',best=.5;for(const k of ['frustrated','low','happy','calm'])if(sc[k]>best){best=sc[k];mood=k}
+    let topic=null,at=1e9;for(const t of TOPIC){const mm=lower.match(t[0]);if(mm&&mm.index<at){at=mm.index;topic=t}}
+    const where=topic&&topic[1],what=topic&&topic[2],short=wc<8;
+    let title=topic&&topic[1]?`${ADJ[mood]} day ${where}`:`${ADJ[mood]} ${per}`;
+    if(turned&&(mood==='frustrated'||mood==='low'))title='A rough start, a better end';
+    let r;
+    if(mood==='frustrated')r=short?`Sounds like ${what||'today'} was a lot.`:turned?`Sounds like ${what||'the day'} took a lot of energy, and things eased up by the end.`:`Sounds like ${what||'today'} took a lot out of you. That’s a lot to carry.`;
+    else if(mood==='low')r=short?'Sounds like today felt heavy.':turned?`It sounds like a heavy ${per} for a while, with something easing up later.`:`That sounds like a heavy ${per}. Thanks for setting some of it down here.`;
+    else if(mood==='happy')r=short?`Sounds like a good ${per}.`:what?`Sounds like ${what} brought some good energy today. Worth holding on to.`:`Sounds like a good ${per}. Worth holding on to.`;
+    else r=short?'Thanks for checking in.':`Sounds like a steady, quiet ${per}. Sometimes that’s enough.`;
+    if(o.style==='minimal')r=r.replace(/^(.*?[.!?])\s.*$/,'$1');
+    let followUp=null;
+    if(o.style!=='minimal'&&!o.continued){if(short)followUp={q:'Want to say a little more?',short:true};else if(o.style==='deeper'||o.n%2===0)followUp={q:ASK[mood][o.style==='deeper'?o.n%2:0]}}
+    return{title,reflection:r,mood,concern:false,followUp,tasks:tasksFrom(text)}}
+  return{analyze,reflect:(text,o)=>new Promise(res=>setTimeout(()=>res(analyze(text,o)),o.instant?0:1100))};
+})();
+function taskKey(t){return t.toLowerCase().replace(/[^a-z0-9\s]/g,'').replace(/^(to|the)\s+/,'').replace(/\s+/g,' ').trim()}
+const MOODS={calm:{l:'Calm',c:'#7c9a86'},happy:{l:'Happy',c:'#d0a03e'},low:{l:'Low',c:'#7d8bb0'},frustrated:{l:'Frustrated',c:'#c0714a'}};
+const moodHTML=e=>{const m=e.concern?{l:'Heavy',c:'#6f6a8c'}:(MOODS[e.mood]||MOODS.calm);return`<span class="mood" style="--m:${m.c}"><i></i>${esc(m.l)}</span>`};
+
+/* ---------- transcription: a demo stand-in with the shape a real service would use ----------
+   Transcriber.start({onLevel}) → session; session.stop() → Promise<string>; session.cancel().
+   Swap DemoTranscriber for a streaming speech-to-text client that resolves the final transcript. */
+const DEMO_SAY=[
+  'Pretty good day. Work was busy but the new layout finally clicked, and I took a walk by the water after lunch. I need to email Sam the files tomorrow and I should book the dentist.',
+  'Honestly kind of drained. I slept badly and the morning meeting ran long. I have to pick up groceries tonight.',
+  'Quiet evening. Made tea, read a little, didn’t do much at all. That felt nice for once.',
+  'Frustrating morning. The car wouldn’t start and I was late for everything. Remember to call the mechanic, and I still need to book the dentist.',
+  'Spent the afternoon with the kids at the park. They wore me out but it was really fun.',
+  'Work.'];
+const DEMO_MORE=['I think what helped was slowing down for a minute.','Mostly I want tomorrow to feel a little lighter.','Writing it out helps more than I expected.'];
+const DemoTranscriber={
+  start({onLevel,continued}){let raf=0,level=0,gate=false,gateAt=.4;const t0=performance.now();
+    const step=now=>{const t=(now-t0)/1000;if(t>gateAt){gate=!gate;gateAt=t+(gate?1.4+Math.random()*2.2:.4+Math.random()*.8)}
+      const syl=Math.abs(Math.sin(t*7.3)*Math.sin(t*3.1+1.3))*.7+.3*Math.abs(Math.sin(t*13.7));level+=((gate?.35+.65*syl:.05)-level)*.25;onLevel&&onLevel(level,t);raf=requestAnimationFrame(step)};
+    raf=requestAnimationFrame(step);
+    return{stop(){cancelAnimationFrame(raf);onLevel&&onLevel(0,0);
+        const text=continued?DEMO_MORE[state.meta.demoIdx%DEMO_MORE.length]:DEMO_SAY[state.meta.demoIdx%DEMO_SAY.length];state.meta.demoIdx++;persist();
+        return new Promise(r=>setTimeout(()=>r(text),350))},
+      cancel(){cancelAnimationFrame(raf);onLevel&&onLevel(0,0)}}}};
+/* Live voice: the browser's own speech recognition (Chrome, Safari). It may be blocked inside an
+   embedded page; the journal then offers keyboard dictation or the sample transcript instead. */
+const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+const LiveTranscriber={available:!!SR,
+  start({onLevel,onText,onError,onStall}){const rec=new SR();rec.continuous=true;rec.interimResults=true;rec.lang=navigator.language||'en-US';
+    let finals='',interim='',stopped=false,done=null,level=0,raf=0,lastHeard=0;const t0=performance.now(),all=()=>(finals+' '+interim).replace(/\s+/g,' ').trim();
+    rec.onresult=e=>{interim='';for(let i=e.resultIndex;i<e.results.length;i++){const r=e.results[i];if(r.isFinal)finals+=' '+r[0].transcript;else interim+=r[0].transcript}lastHeard=performance.now();heard=true;onText&&onText(all())};
+    let heard=false;const stallT=setTimeout(()=>{if(!heard&&!stopped)onStall&&onStall()},7000);
+    rec.onerror=e=>{if(e.error==='no-speech'||e.error==='aborted')return;stopped=true;cancelAnimationFrame(raf);onLevel&&onLevel(0,0);onError&&onError(e.error)};
+    rec.onend=()=>{if(!stopped){try{rec.start()}catch(_){}}else if(done)done(all())};
+    const step=now=>{const target=(now-lastHeard)<650?.45+.55*Math.abs(Math.sin(now/110)):.05;level+=(target-level)*.2;onLevel&&onLevel(level,(now-t0)/1000);raf=requestAnimationFrame(step)};raf=requestAnimationFrame(step);
+    try{rec.start()}catch(e){setTimeout(()=>{stopped=true;cancelAnimationFrame(raf);onError&&onError('start-failed')},0)}
+    return{stop(){stopped=true;clearTimeout(stallT);cancelAnimationFrame(raf);onLevel&&onLevel(0,0);return new Promise(res=>{done=res;try{rec.stop()}catch(_){res(all())}setTimeout(()=>res(all()),1500)})},
+      cancel(){stopped=true;clearTimeout(stallT);cancelAnimationFrame(raf);onLevel&&onLevel(0,0);try{rec.abort()}catch(_){}}}}};
+function micPolicyBlocked(){try{const fp=document.permissionsPolicy||document.featurePolicy;if(fp&&typeof fp.allowsFeature==='function'&&!fp.allowsFeature('microphone'))return true}catch(e){}return false}
+let voiceBlocked=micPolicyBlocked();   // once the mic is refused, stop offering live voice for this visit
+function useLiveVoice(){return state.dev.voice!=='demo'&&LiveTranscriber.available&&!voiceBlocked}
+function dictationHow(){const ua=navigator.userAgent||'',touch=matchMedia('(pointer:coarse)').matches;
+  if(touch)return'tap the microphone on your keyboard';if(/Mac/.test(navigator.platform||ua))return'click into the box, then choose Edit → Start Dictation in your browser’s menu bar';
+  if(/Win/.test(navigator.platform||ua))return'press Windows + H';return'use your device’s dictation'}
+
+/* Claude reflections, through the page's own "ask Claude" capability. Falls back to the local rules
+   whenever Claude isn't available (declined, offline, errors), so journaling never gets stuck. */
+const AI={fn:null,state:'pending'};
+try{if(window.claude&&typeof window.claude.use==='function')window.claude.use('sample').then(f=>{AI.fn=f;AI.state=f?'on':'off';renderDev()},()=>{AI.state='off';renderDev()});else AI.state='off'}catch(e){AI.state='off'}
+const STYLE_RULES={
+  minimal:'Minimal: ONE short sentence (under about 20 words). Mostly just listen and acknowledge. followUp must be null.',
+  curious:'Curious: 1 to 3 short sentences. Include ONE gentle, optional follow-up question only if it would genuinely help them say more; otherwise null.',
+  deeper:'Go Deeper: 2 to 4 sentences that notice something meaningful (a feeling under the surface, a tension, something they seem to care about). Always include ONE thoughtful follow-up question.'};
+function talioPrompt(text,o){const d=new Date(o.at||Date.now()),h=d.getHours(),per=h>=5&&h<12?'morning':h<17&&h>=12?'afternoon':h>=17&&h<22?'evening':'night';
+  return `You are Talio, the calm, warm voice inside a cozy journaling app (a little RV parked by a pond, away from the noise of the internet). Someone just ${o.input==='talk'?'spoke this journal entry (transcribed by speech recognition, so ignore small transcription errors)':'wrote this journal entry'}. Reflect it back.
+
+Reflection style: ${STYLE_RULES[o.style]||STYLE_RULES.curious}
+${o.continued?'This is the complete text after they answered a follow-up question, so followUp must be null.\n':''}${o.earlier?'They already saved an earlier part of this entry (between the <earlier> tags, context only). The <entry> is what they are adding now. Reflect on the new part, connecting it to the earlier part only where that genuinely helps. Take tasks only from the new part.\n':''}${o.starter?'They were answering this prompt from the app: "'+o.starter+'"\n':''}It is ${per} where they are.
+
+How Talio sounds:
+- Like a grounded, kind friend. Plain words, speaking to them as "you".
+- Reflect what they actually said. Never invent details, never diagnose, no advice lists, no therapy jargon, no exclamation marks, no emoji.
+- Avoid cliches such as "it's okay to not be okay", "be gentle with yourself" or "you've got this".
+
+Fields:
+- title: 2 to 5 words, sentence case, no quotes or ending punctuation, naming the day or moment (for example "A long day at work" or "Quiet tea and reading").
+- reflection: the reflection text, following the style above.
+- mood: exactly one of "calm", "happy", "low", "frustrated", whichever fits best.
+- followUp: one question as a string, or null.
+- tasks: concrete things they said they need or want to do, as short phrases starting with a verb ("Book the dentist", "Email Sam the files"). Drop time words like "tomorrow". At most 5. Never invent tasks or include vague wishes ("be happier", "sleep more").
+- concern: true ONLY if the entry suggests thoughts of suicide, self-harm, wanting to die or disappear, or being in danger. If true: the reflection takes them seriously and gently, says you're glad they put it into words, and encourages reaching out today to someone they trust or to a crisis line; followUp null; tasks empty.
+
+Reply with only this JSON object:
+{"title": "...", "reflection": "...", "mood": "calm", "followUp": null, "tasks": [], "concern": false}
+
+${o.earlier?'<earlier>\n'+o.earlier.slice(-4000)+'\n</earlier>\n\n':''}The entry is between the <entry> tags:
+<entry>
+${text.slice(0,8000)}
+</entry>`}
+function normalizeAI(r,local,o){
+  if(!r||typeof r!=='object'||typeof r.reflection!=='string'||!r.reflection.trim())return null;
+  const clean=v=>String(v||'').replace(/\s+/g,' ').trim();
+  let title=clean(r.title).replace(/^["'“]|["'”.]$/g,'');if(!title||title.length>60)title=local.title;
+  const mood=['calm','happy','low','frustrated'].includes(r.mood)?r.mood:local.mood;
+  const concern=r.concern===true||local.concern;
+  let tasks=Array.isArray(r.tasks)?r.tasks.map(clean).filter(t=>t&&t.length<=80).slice(0,5).map(t=>t.charAt(0).toUpperCase()+t.slice(1).replace(/[.]$/,'')):[];
+  let fq=typeof r.followUp==='string'&&clean(r.followUp)?clean(r.followUp):null;
+  if(o.style==='minimal'||o.continued||concern)fq=null;
+  if(concern)tasks=[];
+  return{title,reflection:clean(r.reflection),mood,concern,followUp:fq?{q:fq}:null,tasks,source:'claude'}}
+async function reflectEntry(text,o,signal){
+  const local=Reflector.analyze(text,o);
+  if(state.dev.ai!=='local'&&AI.fn&&AI.state==='on'){
+    try{const r=await AI.fn.json(talioPrompt(text,o),{signal,modelTier:'default',effort:'low',cache:false});
+      const out=normalizeAI(r,local,o);if(out)return out;local.why='Claude’s reply couldn’t be read';}
+    catch(e){const c=e&&e.code;if(c==='cancelled'&&signal&&signal.aborted&&signal.reason==='leave')throw e;
+      if(['not_granted','sampling_disabled','not_declared','capability_disabled','capability_removed'].includes(c)){AI.state='off';renderDev()}
+      local.why=c==='cancelled'?'you skipped Claude for this one':c==='not_granted'?'Claude wasn’t allowed for this page':c==='rate_limited'?'Claude is busy right now':'Claude wasn’t reachable'}}
+  else local.why=state.dev.ai==='local'?'dev setting: local rules':AI.state==='pending'?'Claude was still connecting':'Claude isn’t available here';
+  local.source='local';return local}
+const Transcriber=DemoTranscriber;
+
+/* ---------- sound: synthesized ambience (water, wind, rain), muffled indoors ---------- */
+const Sound=(()=>{let ctx=null,master,muff,water,wind,rain,windF,on=false;
+  function noise(type){const n=ctx.sampleRate*3,b=ctx.createBuffer(1,n,ctx.sampleRate),d=b.getChannelData(0);let last=0;
+    for(let i=0;i<n;i++){const w=Math.random()*2-1;if(type==='brown'){last=(last+.02*w)/1.02;d[i]=last*3.2}else d[i]=w}
+    const s=ctx.createBufferSource();s.buffer=b;s.loop=true;s.start();return s}
+  function chain(src,...nodes){let a=src;for(const n of nodes){a.connect(n);a=n}return a}
+  function filt(type,f,q){const n=ctx.createBiquadFilter();n.type=type;n.frequency.value=f;if(q)n.Q.value=q;return n}
+  function gain(v){const g=ctx.createGain();g.gain.value=v;return g}
+  function init(){if(ctx)return;const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;ctx=new AC();
+    master=gain(0);muff=filt('lowpass',18000);muff.connect(master);master.connect(ctx.destination);
+    water=gain(0);chain(noise('brown'),filt('lowpass',420),water,muff);
+    const lfo=ctx.createOscillator(),lg=gain(.025);lfo.frequency.value=.13;lfo.connect(lg);lg.connect(water.gain);lfo.start();
+    windF=filt('bandpass',520,.7);wind=gain(0);chain(noise('white'),windF,wind,muff);
+    const wl=ctx.createOscillator(),wg=gain(180);wl.frequency.value=.07;wl.connect(wg);wg.connect(windF.frequency);wl.start();
+    rain=gain(0);chain(noise('white'),filt('highpass',1400),filt('lowpass',7000),rain,muff)}
+  function set(g,v,tc=.8){g&&g.gain.setTargetAtTime(v,ctx.currentTime,tc)}
+  function update(){if(!ctx||!on)return;const inside=mode==='in'||mode==='entering';
+    set(water,inside?.02:.05);set(wind,ST.weather==='windy'?.05:ST.weather==='rain'?.022:.01);set(rain,ST.weather==='rain'?(inside?.09:.05):0);
+    muff.frequency.setTargetAtTime(inside?1100:18000,ctx.currentTime,.8)}
+  function chime(soft){if(!ctx||!on)return;const t=ctx.currentTime;[[659.3,0],[987.8,.12],[1318.5,.26]].forEach(([f,d],i)=>{if(soft&&i===2)return;
+    const o=ctx.createOscillator(),g=gain(0);o.type='sine';o.frequency.value=f;o.connect(g);g.connect(master);g.gain.setValueAtTime(0,t+d);g.gain.linearRampToValueAtTime(soft?.05:.08,t+d+.02);g.gain.exponentialRampToValueAtTime(.0001,t+d+1.8);o.start(t+d);o.stop(t+d+1.9)})}
+  return{enable(v){on=v;if(v){init();if(!ctx)return;ctx.resume&&ctx.resume();set(master,1,.4);update()}else if(ctx)set(master,0,.3)},update,chime,
+    suspend(){ctx&&ctx.suspend&&ctx.suspend()},resume(){if(ctx&&on)ctx.resume()}}})();
+
+/* ---------- RV catalog: slots per layer; the interior layer is ready but intentionally empty ---------- */
+const RV_CATALOG={
+  exterior:[
+    {key:'paint',label:'Paint',options:[
+      {id:'classic',name:'Caramel & cream',at:0},{id:'forest',name:'Forest & cream',at:1},{id:'lake',name:'Lake blue',at:4},{id:'rust',name:'Rust & cream',at:8}]},
+    {key:'awning',label:'Awning',options:[{id:'none',name:'None',at:0},{id:'striped',name:'Striped awning',at:2},{id:'canvas',name:'Canvas awning',at:6}]},
+    {key:'roof',label:'Roof',options:[{id:'none',name:'Bare roof',at:0},{id:'rack',name:'Roof rack',at:3},{id:'rackbox',name:'Rack & storage',at:7}]},
+    {key:'detail',label:'Details',options:[{id:'none',name:'Standard',at:0},{id:'lantern',name:'Lantern & whitewalls',at:5}]}],
+  interior:[] // later: rug, bedding, lamp, posters, plants, shelves, display items — each a slot with its own builder
+};
+const RV_BUILDERS={exterior:{paint:id=>RV_BUILD.paint(id),awning:id=>RV_BUILD.awning(id),roof:id=>RV_BUILD.roof(id),detail:id=>RV_BUILD.detail(id)},interior:{}};
+const optKey=(layer,slot,id)=>layer+'.'+slot+'.'+id;
+function journalCount(){return state.dev.sim==null?state.meta.savedTotal:state.dev.sim}
+function isUnlocked(o){return journalCount()>=o.at}
+function allOptions(){const out=[];for(const layer of Object.keys(RV_CATALOG))for(const s of RV_CATALOG[layer])for(const o of s.options)out.push({layer,slot:s.key,slotLabel:s.label,...o});return out}
+function equip(layer,slot,id){state.rv.equipped[layer][slot]=id;persist();const b=RV_BUILDERS[layer][slot];if(b)b(id)}
+function buildRV(){for(const layer of Object.keys(RV_BUILDERS))for(const slot of Object.keys(RV_BUILDERS[layer])){
+  const opts=(RV_CATALOG[layer].find(s=>s.key===slot)||{options:[]}).options,cur=state.rv.equipped[layer][slot],o=opts.find(x=>x.id===cur);
+  // an equipped item stays equipped even if a dev count later says otherwise; only unknown ids fall back
+  RV_BUILDERS[layer][slot](o?cur:opts[0].id)}}
+function newUnlocks(){return allOptions().filter(o=>o.at>0&&isUnlocked(o)&&!state.rv.seen.includes(optKey(o.layer,o.slot,o.id)))}
+function updateCustDot(){$('#custDot').hidden=!newUnlocks().length}
+function nextUnlock(){const n=journalCount();return allOptions().filter(o=>o.at>n).sort((a,b)=>a.at-b.at)[0]}
+
+/* ---------- app UI state ---------- */
+const body=document.body,sheet=$('#sheet'),jcard=$('#jcard'),jText=$('#jText');
+let page=null;          // null (home) | memories | tasks | settings | customize
+const narrow=()=>matchMedia('(max-width:760px)').matches;
+function setTabs(){const cur=page==='memories'||page==='tasks'?page:'home';$$('.tab').forEach(t=>t.dataset.tab===cur?t.setAttribute('aria-current','page'):t.removeAttribute('aria-current'))}
+let pauseTimer=0;
+function openPage(name){
+  if(body.dataset.focus==='journal')return;if(name)hideResurf();
+  page=name;sheet.dataset.page=name||'';if(name)body.dataset.sheet=name;else delete body.dataset.sheet;
+  setTabs();
+  if(name==='memories'){showList();renderMemories()}
+  if(name==='tasks')renderTasks();
+  if(name==='settings')renderSettings();
+  if(name==='customize')renderCustomize();
+  viewK.focusT=name==='customize'?1:0;
+  const n=narrow();viewK.shiftT=name&&!n?(sheet.offsetWidth+18)/2:0;viewK.shiftYT=name==='customize'&&n?sheet.offsetHeight*.42:0;
+  $('#dock').style.setProperty('--dock-shift',viewK.shiftT+'px');
+  // a near-full mobile sheet hides the world, so stop rendering once it has slid in
+  clearTimeout(pauseTimer);renderPaused=false;
+  if(name&&n&&name!=='customize')pauseTimer=setTimeout(()=>{if(page===name&&narrow())renderPaused=true},600);
+}
+const closePage=()=>openPage(null);
+$$('.tab').forEach(t=>t.addEventListener('click',()=>openPage(t.dataset.tab==='home'?null:t.dataset.tab)));
+$('#gearBtn').addEventListener('click',()=>openPage(page==='settings'?null:'settings'));
+$$('[data-close]').forEach(b=>b.addEventListener('click',closePage));
+$('#custBtn').addEventListener('click',()=>openPage('customize'));
+
+/* ---------- dates ---------- */
+const fDay=new Intl.DateTimeFormat(undefined,{month:'short',day:'numeric'}),fTime=new Intl.DateTimeFormat(undefined,{hour:'numeric',minute:'2-digit'}),
+  fMonth=new Intl.DateTimeFormat(undefined,{month:'long',year:'numeric'}),fFull=new Intl.DateTimeFormat(undefined,{weekday:'long',month:'long',day:'numeric'}),fWeek=new Intl.DateTimeFormat(undefined,{weekday:'long'});
+function dayLabel(ts){const s=x=>new Date(x.getFullYear(),x.getMonth(),x.getDate()).getTime(),d=Math.round((s(new Date())-s(new Date(ts)))/864e5);return d===0?'Today':d===1?'Yesterday':fDay.format(new Date(ts))}
+
+/* ---------- Memories ---------- */
+let memFilter='all',memQuery='',openId=null;
+function hl(text,q){const safe=esc(text);if(!q)return safe;const re=new RegExp('('+esc(q).replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi');return safe.replace(re,'<mark>$1</mark>')}
+function snip(b,q){if(!q)return b;const i=b.toLowerCase().indexOf(q.toLowerCase());if(i<50)return b;const f=b.lastIndexOf(' ',i-24);return'…'+b.slice(f+1)}
+function entryTasks(e){return state.tasks.filter(t=>t.sources.some(s=>s.entryId===e.id))}
+function matchesQ(e,q){if(!q)return true;const hay=[e.title,e.body,e.reflection,...(e.more||[]).flatMap(m=>[m.body,m.reflection]),entryTasks(e).map(t=>t.text).join(' ')].join('\n').toLowerCase();return q.toLowerCase().split(/\s+/).filter(Boolean).every(w=>hay.includes(w))}
+function renderMemories(){
+  const host=$('#memBody'),q=memQuery.trim();
+  if(!state.entries.length){host.innerHTML='<div class="empty"><strong>Your memories will live here.</strong>Talk or write from the RV, and each entry you save appears in this timeline.</div>';return}
+  let list=state.entries.slice().sort((a,b)=>b.at-a.at);
+  if(memFilter==='archived')list=list.filter(e=>e.archived);else if(!q)list=list.filter(e=>!e.archived);
+  list=list.filter(e=>matchesQ(e,q));
+  if(!list.length){host.innerHTML=q?`<div class="empty"><strong>Nothing matches “${esc(q)}”.</strong>Search looks through your words, titles, reflections and tasks.</div>`:
+    memFilter==='archived'?'<div class="empty"><strong>Nothing archived.</strong>Archive an entry to tuck it away without deleting it. Archived entries still turn up in search.</div>':'<div class="empty"><strong>Everything is archived.</strong>Switch to Archived to see those entries.</div>';return}
+  const w=q.split(/\s+/)[0]||'';let html='',month='';
+  for(const e of list){const m=fMonth.format(new Date(e.at));if(m!==month){if(month)html+='</ul>';html+=`<h3 class="month">${esc(m)}</h3><ul class="feed">`;month=m}
+    const n=entryTasks(e).length;
+    html+=`<li><button class="mem" type="button" data-id="${esc(e.id)}"><div class="mtop"><span>${esc(dayLabel(e.at))} · ${esc(fTime.format(new Date(e.at)))}</span>${moodHTML(e)}</div>
+      <h3>${hl(e.title,w)}</h3><p class="prev">${hl(snip(e.body,w),w)}</p>${n||e.archived||(e.more&&e.more.length)?`<div class="mmeta">${e.more&&e.more.length?`<span>+${e.more.length} added</span>`:''}${n?`<span>${n} ${n===1?'task':'tasks'}</span>`:''}${e.archived?'<span class="tag">Archived</span>':''}</div>`:''}</button></li>`}
+  host.innerHTML=html+'</ul>';
+  $$('.mem',host).forEach(b=>b.addEventListener('click',()=>openDetail(b.dataset.id)));
+}
+$('#memSearch').addEventListener('input',e=>{memQuery=e.target.value;renderMemories()});
+$$('[data-filter]').forEach(b=>b.addEventListener('click',()=>{memFilter=b.dataset.filter;$$('[data-filter]').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));renderMemories()}));
+function showList(){openId=null;editId=null;$('#memList').style.display='contents';$('#memDetail').style.display='none'}
+let editId=null;
+function openDetail(id){const e=state.entries.find(x=>x.id===id);if(!e)return;if(page!=='memories')openPage('memories');openId=id;editId=null;
+  $('#memList').style.display='none';$('#memDetail').style.display='contents';renderDetail(e);$('#detailBack').focus({preventScroll:true})}
+function renderEdit(e){
+  const host=$('#detailBody'),d=new Date(e.at);
+  host.innerHTML=`<div class="dmeta"><span>${esc(fFull.format(d))} · ${esc(fTime.format(d))}</span><span>Editing</span></div>
+    <label class="dh" for="eTitle">Title</label><input class="einput" id="eTitle" maxlength="80">
+    <label class="dh" for="ePart0">${e.input==='talk'?'You said':'You wrote'}</label><textarea class="earea" id="ePart0" data-i="-1"></textarea>
+    ${(e.more||[]).map((m,i)=>`<label class="dh" for="ePart${i+1}">You added · ${esc(fTime.format(new Date(m.at)))}</label><textarea class="earea" id="ePart${i+1}" data-i="${i}"></textarea>`).join('')}
+    <p class="note" style="margin-top:12px">Talio’s reflections and tasks stay as they are. Clearing an added part removes it.</p>
+    <div class="dact"><button class="btn small solid" type="button" id="eSave">Save changes</button><button class="btn small" type="button" id="eCancel">Cancel</button></div>`;
+  $('#eTitle').value=e.title;$('#ePart0').value=e.body;(e.more||[]).forEach((m,i)=>{$('#ePart'+(i+1)).value=m.body});
+  const fit=t=>{t.style.height='auto';t.style.height=Math.min(t.scrollHeight+2,520)+'px'};
+  $$('.earea',host).forEach(t=>{fit(t);t.addEventListener('input',()=>{fit(t);$('#eSave').disabled=!$('#ePart0').value.trim()})});
+  $('#eCancel').addEventListener('click',()=>{editId=null;renderDetail(e)});
+  $('#eSave').addEventListener('click',()=>{const main=$('#ePart0').value.trim();if(!main)return;
+    e.title=$('#eTitle').value.replace(/\s+/g,' ').trim()||e.title;e.body=main;
+    if(e.more){e.more.forEach((m,i)=>{m.body=$('#ePart'+(i+1)).value.trim()});e.more=e.more.filter(m=>m.body)}
+    e.editedAt=Date.now();persist();editId=null;renderDetail(e)});
+  setTimeout(()=>{try{$('#ePart0').focus({preventScroll:true})}catch(_){}},50)}
+function renderDetail(e){
+  if(editId===e.id)return renderEdit(e);
+  const host=$('#detailBody'),d=new Date(e.at),tasks=entryTasks(e);
+  host.innerHTML=`<div class="dmeta"><span>${esc(fFull.format(d))} · ${esc(fTime.format(d))}</span>${moodHTML(e)}${e.editedAt?'<span>Edited</span>':''}${e.archived?'<span class="tag">Archived</span>':''}</div>
+    <h3 class="dtitle">${esc(e.title)}</h3>
+    <h4 class="dh">${e.input==='talk'?'You said':'You wrote'}</h4><p class="dbody"></p>
+    <h4 class="dh">Talio</h4><p class="drefl"></p>
+    ${(e.more||[]).map(m=>`<div class="dmore"><h4 class="dh">${m.input==='talk'?'You added, aloud':'You added'} · ${esc(fTime.format(new Date(m.at)))}</h4><p class="dbody"></p><p class="drefl"></p></div>`).join('')}
+    ${tasks.length?'<h4 class="dh">Tasks</h4><ul class="tlist" id="dTasks"></ul>':''}
+    ${e.world?`<h4 class="dh">At the retreat</h4><p class="dctx">${esc(TIME_LABEL[e.world.time]||'')} · ${esc(e.world.weather==='clear'?'Clear skies':WX_LABEL[e.world.weather]||'')}, from the window seat</p>`:''}
+    <div class="dact"><button class="btn small" type="button" id="dEdit">Edit</button><button class="btn small" type="button" id="dArch">${e.archived?'Unarchive':'Archive'}</button><button class="btn small danger" type="button" id="dDel">Delete</button></div>
+    <div class="confirm" id="dConf" hidden><p></p><div class="row"><button class="btn small" type="button" id="dNo">Cancel</button><button class="btn small danger solid" type="button" id="dYes">Delete memory</button></div></div>`;
+  $('.dbody',host).textContent=e.body;$('.drefl',host).textContent=e.reflection;
+  $$('.dmore',host).forEach((el,i)=>{const m=e.more[i];$('.dbody',el).textContent=m.body;$('.drefl',el).textContent=m.reflection});
+  if(tasks.length){const ul=$('#dTasks');tasks.forEach(t=>ul.appendChild(taskRow(t,false,()=>renderDetail(e))))}
+  $('#dEdit').addEventListener('click',()=>{editId=e.id;renderDetail(e)});
+  $('#dArch').addEventListener('click',()=>{e.archived=!e.archived;persist();renderDetail(e)});
+  $('#dDel').addEventListener('click',()=>{const c=$('#dConf');c.hidden=false;const own=tasks.filter(t=>t.sources.length===1).length;
+    c.querySelector('p').textContent='Delete this memory'+(own?` and ${own} ${own===1?'task':'tasks'} that only came from it`:'')+'? This can’t be undone. Archive keeps it out of the way instead.';$('#dYes').focus()});
+  $('#dNo').addEventListener('click',()=>{$('#dConf').hidden=true});
+  $('#dYes').addEventListener('click',()=>{deleteEntry(e.id);showList();renderMemories()});
+}
+$('#detailBack').addEventListener('click',()=>{showList();renderMemories()});
+function deleteEntry(id){state.entries=state.entries.filter(x=>x.id!==id);
+  for(const t of state.tasks)t.sources=t.sources.filter(s=>s.entryId!==id);state.tasks=state.tasks.filter(t=>t.sources.length);persist()}
+
+/* ---------- Tasks (identical open tasks merge; the newest journal becomes the source shown) ---------- */
+function taskRow(t,showSource,onChange){
+  const li=document.createElement('li');li.className='trow'+(t.done?' done':'');const id='tk-'+t.id+(showSource?'':'-d');
+  li.innerHTML=`<label for="${id}"><input class="check" type="checkbox" id="${id}"><span><span class="ttxt"></span></span></label><button class="x" type="button">${X_SVG}</button>`;
+  $('.ttxt',li).textContent=t.text;const cb=$('input',li);cb.checked=!!t.done;
+  cb.addEventListener('change',()=>{t.done=cb.checked;t.doneAt=cb.checked?Date.now():null;persist();li.classList.toggle('done',cb.checked);if(onChange)setTimeout(onChange,260)});
+  const src=t.sources.slice().sort((a,b)=>b.at-a.at),e=src.length&&state.entries.find(x=>x.id===src[0].entryId);
+  if(showSource&&e){const b=document.createElement('button');b.type='button';b.className='src';
+    b.textContent='from '+dayLabel(e.at)+' · '+e.title+(src.length>1?` · mentioned ${src.length} times`:'');b.addEventListener('click',()=>openDetail(e.id));$('label > span',li).appendChild(b)}
+  const x=$('.x',li);x.setAttribute('aria-label','Delete task “'+t.text+'”');
+  x.addEventListener('click',()=>{state.tasks=state.tasks.filter(k=>k.id!==t.id);persist();onChange?onChange():li.remove()});
+  return li}
+function renderTasks(){
+  const host=$('#tasksBody');host.innerHTML='';const open=state.tasks.filter(t=>!t.done).sort((a,b)=>b.at-a.at),done=state.tasks.filter(t=>t.done).sort((a,b)=>(b.doneAt||0)-(a.doneAt||0));
+  $('#tasksSub').textContent=state.tasks.length?(open.length?open.length+' open':'All done'):'';
+  if(!state.tasks.length){host.innerHTML='<div class="empty"><strong>Nothing here yet.</strong>When you mention something you need to do, Talio catches it and you can keep it here.</div>';return}
+  if(open.length){const ul=document.createElement('ul');ul.className='tlist';open.forEach(t=>ul.appendChild(taskRow(t,true,renderTasks)));host.appendChild(ul)}
+  else host.insertAdjacentHTML('beforeend','<p class="note" style="margin-top:6px">Nothing open. Nice.</p>');
+  if(done.length){const d=document.createElement('details');d.className='donebox';d.open=open.length===0;d.innerHTML=`<summary>Done · ${done.length}</summary>`;const ul=document.createElement('ul');ul.className='tlist';done.forEach(t=>ul.appendChild(taskRow(t,true,renderTasks)));d.appendChild(ul);host.appendChild(d)}
+}
+function addTasks(texts,entry){ // returns how each caught task was stored: 'new' or 'merged'
+  return texts.map(text=>{const k=taskKey(text),ex=state.tasks.find(t=>!t.done&&taskKey(t.text)===k);
+    if(ex){ex.sources.push({entryId:entry.id,at:entry.at});return'merged'}
+    state.tasks.push({id:uid(),text,done:false,doneAt:null,at:entry.at,sources:[{entryId:entry.id,at:entry.at}]});return'new'})}
+
+/* ---------- resurfacing: an older entry, at most once a day ---------- */
+function dayNum(t){const d=new Date(t);return Math.round(new Date(d.getFullYear(),d.getMonth(),d.getDate()).getTime()/864e5)}
+function pickResurface(force){const today=dayNum(Date.now()),pool=state.entries.filter(e=>!e.archived&&!e.concern);
+  const spans=[[365,366,'A year ago today'],[28,31,'A month ago'],[7,7,'A week ago today']];
+  for(const [a,b,label] of spans){const e=pool.find(x=>{const g=today-dayNum(x.at);return g>=a&&g<=b});if(e)return{e,label}}
+  if(force){const e=pool.find(x=>today-dayNum(x.at)>=1);if(e){const g=today-dayNum(e.at);return{e,label:g===1?'Yesterday':g+' days ago'}}}
+  return null}
+function showResurface(force){const today=new Date().toDateString();
+  if(!force&&(state.meta.resurfDay===today||mode!=='out'||page||session||$('#toast').dataset.show==='true'))return;
+  const hit=pickResurface(force);if(!hit)return;state.meta.resurfDay=today;persist();
+  $('#resurfWhen').textContent=hit.label;$('#resurfTitle').textContent=hit.e.title;$('#resurfSnip').textContent=hit.e.body.replace(/\s+/g,' ').slice(0,90);
+  $('#resurf').dataset.id=hit.e.id;$('#resurf').dataset.show='true'}
+const hideResurf=()=>{$('#resurf').dataset.show='false'};
+$('#resurfOpen').addEventListener('click',()=>{const id=$('#resurf').dataset.id;hideResurf();openDetail(id)});
+$('#resurfX').addEventListener('click',hideResurf);
+
+/* ---------- Settings ---------- */
+function renderSettings(){
+  $$('input[name="rstyle"]').forEach(r=>{r.checked=r.value===state.settings.reflectionStyle});
+  $$('#setInput button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.v===state.settings.defaultInput)));
+  $('#setSound').setAttribute('aria-checked',String(!!state.settings.sound));$('#setMotion').setAttribute('aria-checked',String(!!state.settings.reducedMotion));
+  $('#dataNote').textContent=storageOK?`Saved only in this browser: ${state.entries.length} ${state.entries.length===1?'memory':'memories'} and ${state.tasks.length} ${state.tasks.length===1?'task':'tasks'}. Clearing site data erases them, so download a backup now and then.`:'This browser isn’t allowing saved data, so entries will be lost when you close it.';
+  $('#eraseConfirm').hidden=true;$('#backupNote').hidden=true}
+$$('input[name="rstyle"]').forEach(r=>r.addEventListener('change',()=>{state.settings.reflectionStyle=r.value;persist()}));
+$$('#setInput button').forEach(b=>b.addEventListener('click',()=>{state.settings.defaultInput=b.dataset.v;persist();renderSettings();updateDock()}));
+function applySound(){const on=!!state.settings.sound;$('#soundBtn').setAttribute('aria-pressed',String(on));$('#soundBtn').setAttribute('aria-label',on?'Turn sound off':'Turn sound on');$('#setSound').setAttribute('aria-checked',String(on));Sound.enable(on)}
+function toggleSound(){state.settings.sound=!state.settings.sound;persist();applySound();if(state.settings.sound)setTimeout(()=>Sound.chime(true),80)}
+$('#soundBtn').addEventListener('click',toggleSound);$('#setSound').addEventListener('click',toggleSound);
+function applyMotion(){reducedMotion=!!state.settings.reducedMotion;body.dataset.motion=reducedMotion?'reduced':'full';$('#setMotion').setAttribute('aria-checked',String(reducedMotion))}
+$('#setMotion').addEventListener('click',()=>{state.settings.reducedMotion=!state.settings.reducedMotion;persist();applyMotion();applyState()});
+let dlP=null;const getDownloads=()=>dlP||(dlP=(window.claude&&typeof window.claude.use==='function')?window.claude.use('downloads').catch(()=>null):Promise.resolve(null));
+function backupNote(t){const n=$('#backupNote');n.hidden=false;n.textContent=t}
+$('#backupBtn').addEventListener('click',async()=>{
+  const d=new Date(),stamp=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  const data=JSON.stringify({app:'talio-home',format:1,exportedAt:d.toISOString(),entries:state.entries,tasks:state.tasks,rv:state.rv,settings:state.settings},null,2);
+  const filename='talio-backup-'+stamp+'.json',btn=$('#backupBtn');btn.disabled=true;
+  try{const dl=await getDownloads();
+    if(dl){await dl.save({filename,data});backupNote('Backup saved. Keep it somewhere safe; it holds your entries in plain text.')}
+    else{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([data],{type:'application/json'}));a.download=filename;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1500);backupNote('Backup downloaded.')}}
+  catch(e){const c=e&&e.code;backupNote(c==='declined'?'No backup saved.':c==='rate_limited'?'A save prompt is already open.':'Downloads aren’t available here.')}
+  finally{btn.disabled=false}});
+$('#eraseBtn').addEventListener('click',()=>{$('#eraseConfirm').hidden=false;$('#eraseYes').focus()});
+$('#eraseNo').addEventListener('click',()=>{$('#eraseConfirm').hidden=true});
+$('#eraseYes').addEventListener('click',()=>{const keep={settings:state.settings,dev:state.dev};state=defaults();state.settings=keep.settings;state.dev=keep.dev;persist();buildRV();updateCustDot();renderSettings()});
+
+/* ---------- Customize RV ---------- */
+let highlightOpt=null;
+function renderCustomize(){
+  const host=$('#custBody'),n=journalCount(),nx=nextUnlock();
+  let html=`<div class="progress"><b>${n} ${n===1?'memory':'memories'} saved.</b> ${nx?`Next: ${esc(nx.name)} after ${nx.at} ${nx.at===1?'memory':'memories'}.`:'Everything is open.'}</div>`;
+  for(const s of RV_CATALOG.exterior){
+    html+=`<section class="slot"><h3>${esc(s.label)}</h3><div class="opts">`;
+    for(const o of s.options){const un=isUnlocked(o),k=optKey('exterior',s.key,o.id),on=state.rv.equipped.exterior[s.key]===o.id,isNew=un&&o.at>0&&!state.rv.seen.includes(k);
+      const sw=s.key==='paint'?`<span class="sw" aria-hidden="true"><i style="background:${PAINTS[o.id].lower}"></i><i style="background:${PAINTS[o.id].upper}"></i><i style="background:${PAINTS[o.id].stripe}"></i></span>`:'';
+      html+=`<button class="opt" type="button" data-slot="${s.key}" data-id="${o.id}" aria-pressed="${on}" ${un?'':'disabled'}>${sw}<b>${esc(o.name)}</b>${un?(on?'<small>On your RV</small>':'<small>Tap to use</small>'):`<small class="lock">${LOCK_SVG}After ${o.at} ${o.at===1?'memory':'memories'}</small>`}${isNew?'<span class="new">New</span>':''}</button>`}
+    html+='</div></section>'}
+  host.innerHTML=html;
+  $$('.opt',host).forEach(b=>b.addEventListener('click',()=>{equip('exterior',b.dataset.slot,b.dataset.id);markSeen('exterior',b.dataset.slot,b.dataset.id);renderCustomize()}));
+  // looking at an option counts as seeing it; the "New" tag stays until it is touched or the panel is closed
+  updateCustDot();
+}
+function markSeen(l,s,id){const k=optKey(l,s,id);if(!state.rv.seen.includes(k)){state.rv.seen.push(k);persist()}updateCustDot()}
+function markAllSeen(){for(const o of newUnlocks())state.rv.seen.push(optKey(o.layer,o.slot,o.id));persist();updateCustDot()}
+const _open=openPage;openPage=function(name){if(page==='customize'&&name!=='customize')markAllSeen();_open(name)};
+
+/* ---------- unlock note (calm; never auto-equips) ---------- */
+let toastTimer=0;
+function announceUnlocks(){const fresh=allOptions().filter(o=>o.at>0&&isUnlocked(o)&&!state.rv.announced.includes(optKey(o.layer,o.slot,o.id)));
+  if(!fresh.length)return;for(const o of fresh)state.rv.announced.push(optKey(o.layer,o.slot,o.id));persist();updateCustDot();
+  const o=fresh[fresh.length-1];$('#toastName').textContent=o.name+(fresh.length>1?` and ${fresh.length-1} more`:'');
+  const t=$('#toast');t.dataset.show='true';Sound.chime(true);clearTimeout(toastTimer);toastTimer=setTimeout(()=>{t.dataset.show='false'},9000)}
+$('#toastSee').addEventListener('click',()=>{$('#toast').dataset.show='false';openPage('customize')});
+$('#toastX').addEventListener('click',()=>{$('#toast').dataset.show='false'});
+
+/* ---------- home dock ---------- */
+function resolvedInput(){const d=state.settings.defaultInput;return d==='last'?state.meta.lastInput||'talk':d}
+function updateDock(){const p=resolvedInput(),row=$('.dock-row');$$('[data-start]').forEach(b=>b.dataset.primary=String(b.dataset.start===p));
+  row.prepend($(`[data-start="${p}"]`))}
+$$('[data-start]').forEach(b=>b.addEventListener('click',()=>startJournal(b.dataset.start)));
+
+/* ---------- journal focus mode ---------- */
+let session=null,listenSess=null,timerId=0,discardArmed=false;
+const waveBars=$$('.wave i');
+function setJ(s){jcard.dataset.state=s;jcard.scrollTop=0}
+function eyebrow(){const d=new Date();return fWeek.format(d)+' · '+TIME_LABEL[ST.time]}
+function startJournal(kind){
+  if(mode!=='out'||session)return;closePage();$('#toast').dataset.show='false';hideResurf();
+  session={kind,text:'',continued:false,result:null,tasks:[]};state.meta.lastInput=kind;persist();updateDock();
+  body.dataset.focus='journal';$('#jEyebrow').textContent=eyebrow();
+  if(kind==='write')prepWrite(state.meta.draft||'',PROMPTS[ST.time],false);else{$('#jTalkQ').textContent=PROMPTS[ST.time];setJ('talk')}
+  startEnter(()=>{Sound.update();body.dataset.journal='up';if(!session)return;
+    if(kind==='talk')startListening();else setTimeout(()=>{try{jText.focus({preventScroll:true})}catch(e){}},420)});
+  Sound.update();
+}
+const waveLevel=(lv,t)=>waveBars.forEach((b,i)=>{b.style.transform='scaleY('+Math.min(1,.18+lv*(reducedMotion?.4:1)*(.5+.5*Math.abs(Math.sin(t*(5+i*1.7)+i)))).toFixed(3)+')'});
+const VOICE_ERR={'not-allowed':'Microphone access is blocked for this page.','service-not-allowed':'Speech recognition isn’t allowed here.','audio-capture':'No microphone was found.','network':'Speech recognition needs a connection and couldn’t reach it.','start-failed':'Live voice couldn’t start here.','language-not-supported':'Live voice doesn’t support your language yet.'};
+function voiceMsg(text,soft){$('#jVoiceMsg').hidden=false;$('#jVoiceMsgT').textContent=text;$('#jVoiceRetry').hidden=!!soft;if(soft)return;$('#jDone').hidden=true;$('.listen').hidden=true;$('#jLive').hidden=true}
+const BLOCKING=['not-allowed','service-not-allowed','start-failed','audio-capture'];
+function startDictation(why){if(listenSess){listenSess.cancel();listenSess=null}clearInterval(timerId);session.kind='talk';
+  const base=session.continued?session.text+'\n\n':'';prepWrite(base,$('#jTalkQ').textContent,false);
+  $('#jDictTip').hidden=true;$('#jToTalk').hidden=true;$('#jDictMsg').hidden=false;jText.placeholder='Your words will appear here…';armStuck();
+  $('#jDictMsgT').textContent=(why?why+' ':'')+'To talk, '+dictationHow()+' and speak. Your words land here, then tap Reflect.';
+  setTimeout(()=>{try{jText.focus();jText.setSelectionRange(jText.value.length,jText.value.length)}catch(e){}},60)}
+function startListening(forceDemo){if(!forceDemo&&state.dev.voice!=='demo'&&(voiceBlocked||!LiveTranscriber.available)){startDictation(voiceBlocked?'Live voice isn’t available in this preview.':'This browser doesn’t do live voice.');return}
+  setJ('talk');$('#jVoiceMsg').hidden=true;$('#jDone').hidden=false;$('.listen').hidden=false;
+  const live=!forceDemo&&useLiveVoice();
+  $('#jListening').textContent=session.continued?'Still listening…':'Listening…';
+  $('#jVoiceNote').textContent=live?'Live voice uses your browser’s speech recognition. Tap Done when you’ve finished.':'Sample voice: a demo transcript stands in for real transcription.';
+  $('#jLive').hidden=!live;$('#jLive').textContent='';
+  const t0=performance.now();$('#jTimer').textContent='0:00';clearInterval(timerId);
+  timerId=setInterval(()=>{const s=Math.floor((performance.now()-t0)/1000);$('#jTimer').textContent=Math.floor(s/60)+':'+String(s%60).padStart(2,'0')},250);
+  if(live){listenSess=LiveTranscriber.start({onLevel:waveLevel,onText:t=>{const el=$('#jLive');el.textContent=t;el.scrollTop=el.scrollHeight;$('#jVoiceMsg').hidden=true},
+      onStall:()=>voiceMsg('Not hearing anything yet. If no words appear as you speak, live voice may be blocked here.',true),
+      onError:err=>{clearInterval(timerId);listenSess=null;if(BLOCKING.includes(err)){voiceBlocked=true;renderDev();startDictation('Live voice is blocked in this preview.');return}voiceMsg((VOICE_ERR[err]||'Live voice stopped unexpectedly.')+' You can tap Write and use the microphone on your keyboard, or try a sample transcript.')}})}
+  else listenSess=Transcriber.start({continued:session.continued,onLevel:waveLevel})}
+function stopListening(){clearInterval(timerId);if(listenSess){const s=listenSess;listenSess=null;return s.stop()}return Promise.resolve('')}
+const STARTERS=['What’s taking up the most room in your head right now?','What was one small good thing today?','What’s something you keep putting off?','How does your body feel right now?','What would make tomorrow a little easier?','Who was on your mind today?','What would you like to set down before tonight?','What surprised you today?','What are you looking forward to, even a little?','What happened in the last hour?'];
+let stuckT=0,starterIdx=Math.floor(Math.random()*STARTERS.length);
+function armStuck(){clearTimeout(stuckT);$('#jStuckRow').hidden=true;$('#jStuck').textContent='Not sure where to start?';
+  stuckT=setTimeout(()=>{if(session&&jcard.dataset.state==='write'&&!jText.value.trim())$('#jStuckRow').hidden=false},7000)}
+$('#jStuck').addEventListener('click',()=>{const q=STARTERS[starterIdx++%STARTERS.length];$('#jWriteQ').textContent=q;if(session)session.starter=q;$('#jStuck').textContent='Another question';try{jText.focus()}catch(e){}});
+function prepWrite(text,q,heard){$('#jWriteQ').textContent=q;$('#jDictMsg').hidden=true;$('#jToTalk').hidden=false;jText.placeholder='Start writing…';if(session)session.starter=null;if(!text.trim())armStuck();else{clearTimeout(stuckT);$('#jStuckRow').hidden=true}$('#jHeard').hidden=!heard;$('#jDictTip').hidden=heard||!matchMedia('(pointer:coarse)').matches;jText.value=text;$('#jReflect').disabled=!text.trim();setJ('write')}
+$('#jDone').addEventListener('click',()=>{if(!session)return;$('#jDone').disabled=true;stopListening().then(t=>{$('#jDone').disabled=false;if(!session)return;
+  if(!t.trim()){voiceMsg('I didn’t catch anything that time.');return}
+  const text=session.continued?(session.text+' '+t).trim():t;prepWrite(text,'Here’s what I heard',true)})});
+$('#jVoiceWrite').addEventListener('click',()=>{voiceBlocked=true;renderDev();startDictation('')});
+$('#jVoiceRetry').addEventListener('click',()=>startListening(false));
+$('#jVoiceSample').addEventListener('click',()=>{if(listenSess){listenSess.cancel();listenSess=null}startListening(true)});
+$('#jToWrite').addEventListener('click',()=>{if(listenSess){listenSess.cancel();listenSess=null}clearInterval(timerId);session.kind='write';prepWrite(session.continued?session.text+'\n\n':'',PROMPTS[ST.time],false);setTimeout(()=>jText.focus(),50)});
+$('#jToTalk').addEventListener('click',()=>{session.kind='talk';$('#jTalkQ').textContent=PROMPTS[ST.time];startListening()});
+jText.addEventListener('input',()=>{$('#jReflect').disabled=!jText.value.trim();if(jText.value.trim()){clearTimeout(stuckT);if($('#jStuck').textContent!=='Another question')$('#jStuckRow').hidden=true}if(session&&session.kind==='write'&&!session.continued&&!session.entryId){state.meta.draft=jText.value;persistSoon()}});
+let pTimer=0;function persistSoon(){clearTimeout(pTimer);pTimer=setTimeout(persist,400)}
+$('#jReflect').addEventListener('click',runReflect);
+let thinkTimers=[];
+function runReflect(){const text=jText.value.trim();if(!text||!session)return;session.text=text;session.result=null;if(document.activeElement)document.activeElement.blur();setJ('thinking');
+  session.at=session.at||Date.now();const ctl=new AbortController();session.ctl=ctl;
+  $('#jThinkNote').textContent='';$('#jThinkRow').hidden=true;thinkTimers.forEach(clearTimeout);
+  thinkTimers=[setTimeout(()=>{$('#jThinkNote').textContent='Taking a moment with it…'},6000),setTimeout(()=>{$('#jThinkRow').hidden=false},14000)];
+  const sess=session,started=performance.now();
+  reflectEntry(text,{style:state.settings.reflectionStyle,continued:session.continued,n:state.meta.savedTotal,at:session.at,input:session.kind,earlier:session.earlier||'',starter:session.starter||''},ctl.signal).then(res=>{
+    const wait=Math.max(0,(reducedMotion?150:900)-(performance.now()-started));   // never flash the thinking state
+    setTimeout(()=>{thinkTimers.forEach(clearTimeout);if(session!==sess||jcard.dataset.state!=='thinking')return;session.result=res;session.tasks=res.tasks.map(t=>({text:t,removed:false}));showReflection()},wait)},()=>{thinkTimers.forEach(clearTimeout)})}
+$('#jSkipAI').addEventListener('click',()=>{if(session&&session.ctl)session.ctl.abort('skip')});
+function showReflection(){const r=session.result;resetDiscard();const base=session.entryId&&state.entries.find(x=>x.id===session.entryId);
+  $('#rTitle').textContent=base?base.title:r.title;$('#rSave').textContent=base?'Add to entry':'Save';$('#rText').textContent=r.reflection;$('#rSupport').hidden=!r.concern;
+  $('#rFollow').hidden=!r.followUp;if(r.followUp){$('#rFollowQ').textContent=r.followUp.q;$('#rMore').textContent=session.kind==='talk'?'Keep talking':'Keep writing'}
+  const ul=$('#rTasks');ul.innerHTML='';
+  for(const t of session.tasks){const li=document.createElement('li');const k=taskKey(t.text),dup=state.tasks.some(x=>!x.done&&taskKey(x.text)===k);
+    li.innerHTML=`<span></span>${dup?'<span class="merged">Already on your list</span>':''}<button class="x" type="button">${X_SVG}</button>`;$('span',li).textContent=t.text;
+    $('.x',li).setAttribute('aria-label','Leave out “'+t.text+'”');$('.x',li).addEventListener('click',()=>{t.removed=true;li.classList.add('leaving');setTimeout(()=>{li.remove();updateCaught()},260)});ul.appendChild(li)}
+  $('#rTasksWrap').hidden=r.concern;updateCaught();
+  $('#rSource').textContent=r.source==='claude'?'Reflection by Claude':'Quick reflection'+(r.why?' · '+r.why:'');
+  setJ('reflect');setTimeout(()=>{try{$('#rSave').focus({preventScroll:true})}catch(e){}},60)}
+function updateCaught(){const n=session.tasks.filter(t=>!t.removed).length;$('#rTasks').hidden=!n;$('#rCaught').textContent=n?`Caught ${n} ${n===1?'task':'tasks'}`:(session.tasks.length?'Nothing to carry from this one.':'No tasks in this one.')}
+$('#rMore').addEventListener('click',()=>{session.continued=true;const q=session.result.followUp?session.result.followUp.q:PROMPTS[ST.time];
+  if(session.kind==='talk'){$('#jTalkQ').textContent=q;startListening()}else{prepWrite(session.text+'\n\n',q==='Want to say a little more?'?'Say a little more':q,false);jText.focus();jText.setSelectionRange(jText.value.length,jText.value.length)}});
+$('#rEnough').addEventListener('click',()=>{$('#rFollow').hidden=true});
+function resetDiscard(){discardArmed=false;$('#rDiscard').textContent='Discard'}
+$('#rDiscard').addEventListener('click',()=>{if(!discardArmed){discardArmed=true;$('#rDiscard').textContent='Tap again to discard';return}
+  if(session.entryId){showSaved('Left that part out','Your entry is still saved as it was.');return}state.meta.draft='';persist();leaveJournal(false)});
+$('#rSave').addEventListener('click',()=>{if(!session||!session.result)return;const adding=!!session.entryId;const e=saveEntry();session.entryId=e.id;Sound.chime(false);
+  showSaved(adding?'Added to this entry':'Saved to Memories','Stay as long as you like. Anything more you add joins this entry.')});
+function showSaved(t,note){$('#savedT').textContent=t;$('#savedNote').textContent=note;setJ('saved');setTimeout(()=>{try{$('#sOut').focus({preventScroll:true})}catch(e){}},60)}
+$('#sOut').addEventListener('click',()=>leaveJournal(true));
+$('#sMore').addEventListener('click',keepGoing);
+function entryFullText(e){return[e.body,...(e.more||[]).map(m=>m.body)].join('\n\n')}
+function keepGoing(){const e=session&&state.entries.find(x=>x.id===session.entryId);if(!e){leaveJournal(true);return}
+  const kind=session.kind;session={kind,text:'',continued:false,result:null,tasks:[],entryId:e.id,earlier:entryFullText(e)};
+  const q='What else is on your mind?';
+  if(kind==='talk'){$('#jTalkQ').textContent=q;startListening()}else{prepWrite('',q,false);setTimeout(()=>{try{jText.focus()}catch(_){}},50)}}
+$('#jLeave').addEventListener('click',()=>{if(session&&session.kind==='write'&&!session.continued&&!session.entryId&&jcard.dataset.state==='write'){state.meta.draft=jText.value;persist()}leaveJournal(jcard.dataset.state==='saved')});
+function saveEntry(){const r=session.result,at=session.at||Date.now();
+  const base=session.entryId&&state.entries.find(x=>x.id===session.entryId);
+  if(base){const m={at,input:session.kind,body:session.text,reflection:r.reflection,mood:r.mood,concern:!!r.concern,reflectedBy:r.source==='claude'?'claude':'local'};
+    (base.more=base.more||[]).push(m);if(r.concern)base.concern=true;addTasks(session.tasks.filter(t=>!t.removed).map(t=>t.text),{id:base.id,at});persist();return base}
+  const e={id:uid(),at,input:session.kind,title:r.title,body:session.text,reflection:r.reflection,mood:r.mood,concern:!!r.concern,archived:false,world:{time:ST.time,weather:ST.weather},reflectedBy:r.source==='claude'?'claude':'local'};
+  state.entries.unshift(e);addTasks(session.tasks.filter(t=>!t.removed).map(t=>t.text),e);
+  state.meta.savedTotal+=1;state.meta.draft='';persist();return e}
+function leaveJournal(saved){if(session&&session.entryId)saved=true;
+  if(session&&session.ctl&&!session.result)session.ctl.abort('leave');thinkTimers.forEach(clearTimeout);
+  if(listenSess){listenSess.cancel();listenSess=null}clearInterval(timerId);if(document.activeElement)document.activeElement.blur();
+  body.dataset.journal='down';const after=()=>{delete body.dataset.focus;session=null;setJ('write');Sound.update();if(saved)setTimeout(announceUnlocks,500)};
+  if(mode==='in'){setTimeout(()=>startExit(after),reducedMotion?0:250)}else{session=null;after()}
+}
+
+/* ---------- keyboard + viewport ---------- */
+document.addEventListener('keydown',e=>{if(e.key!=='Escape')return;
+  if(body.dataset.focus==='journal'){const st=jcard.dataset.state;if(st==='write'||st==='talk'||st==='saved')$('#jLeave').click();return}
+  if(page==='memories'&&openId){showList();renderMemories()}else if(page)closePage()});
+if(window.visualViewport){const vv=visualViewport,onVV=()=>{const kb=Math.max(0,innerHeight-vv.height-vv.offsetTop);document.documentElement.style.setProperty('--kb',kb>40?kb+'px':'0px')};vv.addEventListener('resize',onVV);vv.addEventListener('scroll',onVV)}
+addEventListener('resize',()=>{size();if(page)openPage(page)});
+document.addEventListener('visibilitychange',()=>{document.hidden?Sound.suspend():Sound.resume()});
+const wake=()=>{if(state.settings.sound)Sound.enable(true)};document.addEventListener('pointerdown',wake,true);document.addEventListener('keydown',wake,true);
+
+/* ---------- developer controls (temporary; separate from Settings) ---------- */
+function renderDev(){
+  const d=state.dev,seg=(k,vals,lab)=>`<div><h4>${lab}</h4><div class="dseg" data-k="${k}">${vals.map(([v,l])=>`<button type="button" data-v="${v}" aria-pressed="${String(d[k])===String(v)}">${l}</button>`).join('')}</div></div>`;
+  $('#devP').innerHTML=seg('angle',[[30,'30°'],[40,'40°']],'Exterior camera')+seg('time',[['auto','Auto'],['morning','Morning'],['midday','Midday'],['golden','Golden'],['night','Night']],'Time')+
+    seg('weather',[['auto','Auto'],['clear','Clear'],['rain','Rain'],['windy','Windy']],'Weather')+
+    seg('ai',[['claude','Claude'],['local','Local rules']],'Reflections')+`<p>Claude: ${AI.state==='on'?'connected (asks permission on first use)':AI.state==='pending'?'connecting…':'not available in this view'}</p>`+
+    seg('voice',[['live','Live (browser)'],['demo','Sample transcript']],'Voice')+`<p>Live voice: ${!LiveTranscriber.available?'not supported by this browser (uses keyboard dictation)':voiceBlocked?'blocked in this view (uses keyboard dictation)':'supported by this browser'}</p>`+
+    seg('sim',[['null','Real ('+state.meta.savedTotal+')'],...[0,1,2,3,4,5,6,7,8].map(n=>[n,String(n)])],'Journal count for unlocks')+
+    `<div><h4>Data</h4><div class="dseg"><button type="button" id="devDemo">Load demo memories</button><button type="button" id="devClear">Clear all data</button><button type="button" id="devToast">Replay unlock note</button><button type="button" id="devResurf">Show a past entry</button></div></div><p>Developer only. Real settings live behind the gear.</p>`;
+  $$('#devP .dseg[data-k] button').forEach(b=>b.addEventListener('click',()=>{const k=b.parentElement.dataset.k;let v=b.dataset.v;
+    if(k==='angle')v=+v;if(k==='sim')v=v==='null'?null:+v;state.dev[k]=v;persist();
+    if(k==='angle')VIEW.angle=v;if(k==='time'||k==='weather')applyWorld();if(k==='sim'){updateCustDot();if(page==='customize')renderCustomize()}renderDev()}));
+  $('#devDemo').addEventListener('click',()=>{loadDemo();renderDev();updateDock();if(page)openPage(page)});
+  $('#devClear').addEventListener('click',()=>{const dev=state.dev;state=defaults();state.dev=dev;persist();buildRV();updateCustDot();updateDock();applySound();renderDev();if(page)openPage(page)});
+  $('#devToast').addEventListener('click',()=>{state.rv.announced=[];announceUnlocks()});
+  $('#devResurf').addEventListener('click',()=>{if(page)closePage();showResurface(true)});
+}
+function loadDemo(){const now=Date.now(),day=864e5;
+  const items=[
+    [8.6,'golden','clear','write','Long walk by the water after work, and I finally finished the first chapter. I should book the dentist this week.'],
+    [7.9,'night','rain','talk','Honestly kind of drained. Slept badly and I miss my friends lately. I need to call Maya this weekend.'],
+    [6.2,'morning','clear','write','Quiet morning. Coffee, some reading, nothing much to report.'],
+    [4.4,'midday','windy','talk','Frustrating day at work, the client meeting ran long and everything felt rushed. Remember to send the revised mockup, and I still need to book the dentist.'],
+    [2.8,'golden','clear','write','Spent the afternoon with the kids at the park. They wore me out but it was really fun.'],
+    [1.3,'night','rain','write','Rain on the roof all evening. Made tea and read. I have to pick up detergent tomorrow.'],
+    [.2,'midday','clear','talk','Pretty good day so far. The new layout finally clicked.']];
+  for(const [ago,time,weather,input,text] of items){const at=now-ago*day,r=Reflector.analyze(text,{style:'curious',n:0,at,input});
+    const e={id:uid(),at,input,title:r.title,body:text,reflection:r.reflection,mood:r.mood,concern:r.concern,archived:false,world:{time,weather}};
+    state.entries.push(e);addTasks(r.tasks,e);state.meta.savedTotal+=1}
+  state.entries.sort((a,b)=>b.at-a.at);const arch=state.entries.find(e=>/coffee/i.test(e.body));if(arch)arch.archived=true;
+  const done=state.tasks.find(t=>/maya/i.test(t.text));if(done){done.done=true;done.doneAt=now}
+  persist();updateCustDot()}
+
+/* ---------- boot ---------- */
+VIEW.angle=state.dev.angle===40?40:30;
+applyMotion();buildRV();size();applyWorld();updateDock();applySound();updateCustDot();renderDev();
+U.time.value=20;requestAnimationFrame(frame);
+(function waitReady(){if(!ready)return setTimeout(waitReady,300);setTimeout(()=>showResurface(false),2200)})();
+setInterval(()=>{if(state.dev.time==='auto'||state.dev.weather==='auto'){const t=ST.time,w=ST.weather;resolveWorld();if(t!==ST.time||w!==ST.weather)applyWorld()}},60e3);
+window.__talio={state:()=>state,openPage,startJournal,mode:()=>mode,trT:()=>tr?tr.t:0,isReady:()=>ready,jstate:()=>jcard.dataset.state,
+  dev(o){Object.assign(state.dev,o);renderDev&&0;VIEW.angle=state.dev.angle;persist();applyWorld();updateCustDot();renderDev()},loadDemo,tune(t){VIEW.tune=t},
+  jumpIn(kind){startJournal(kind||'write');tr&&(tr.t=tr.dur-.01)}};
+})();
+</script>

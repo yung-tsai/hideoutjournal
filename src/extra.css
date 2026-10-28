@@ -1,0 +1,25 @@
+/* ---------- stage: the scene and the van interior, placed by the camera ---------- */
+#stage{position:fixed;inset:0;overflow:hidden;background:var(--ground);z-index:0}
+#stage canvas{position:absolute;left:0;top:0;display:block;image-rendering:pixelated;image-rendering:crisp-edges}
+#inside{visibility:hidden;opacity:0}
+/* a soft focus vignette while the interface is up; it lifts when the interface rests */
+.vignette{position:fixed;inset:0;z-index:1;pointer-events:none;opacity:1;transition:opacity 1.4s ease;
+  background:radial-gradient(130% 120% at 50% 46%,transparent 52%,rgba(10,7,9,.30) 74%,rgba(10,7,9,.62) 100%)}
+body[data-idle] .vignette{opacity:0}
+/* resting interface: header lifts away, dock and nav sink, cursor hides */
+body[data-idle]{cursor:none}
+body[data-idle] .top{opacity:0;transform:translateY(-110%);pointer-events:none}
+body[data-idle] .dock{opacity:0;--dock-y:28px;pointer-events:none}
+body[data-idle] .bottomnav{opacity:0;transform:translateY(100%);pointer-events:none}
+body[data-idle] #devChip{opacity:0;pointer-events:none}
+.top{transition:opacity .7s ease,transform .8s cubic-bezier(.2,.8,.2,1)}
+.dock{transform:translateX(calc(-50% - var(--dock-shift,0px))) translateY(var(--dock-y,0px));transition:opacity .7s ease,transform .8s cubic-bezier(.2,.8,.2,1)}
+/* customize placeholder */
+.soon{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.soon div{padding:14px;border-radius:var(--r);border:1px dashed var(--line-2);background:var(--paper-2);display:flex;flex-direction:column;gap:4px}
+.soon b{font:500 15px/1.2 var(--pixel);letter-spacing:.02em}
+.soon small{font-size:12.5px;color:var(--ink-3)}
+/* camp-only screen effects from Pixel Tuner: soft glow + vignette (fade with the camp when entering the van) */
+#stagefx{position:absolute;inset:0;pointer-events:none}
+#stagefx #glowfx{position:absolute;mix-blend-mode:screen;opacity:0;image-rendering:pixelated}
+#artvig{position:absolute;opacity:0}
