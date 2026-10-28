@@ -4,7 +4,8 @@
 import * as THREE from 'three';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
-const CELL=512,COLS=8,ROWS=4;
+const CELL=512,COLS=8,ROWS=8;
+const FROM=+(new URLSearchParams(location.search).get('from')||0);   // ?from=4 bakes only rows 4-7 (paste them under an existing sheet)
 const r=new THREE.WebGLRenderer({antialias:true,alpha:true,preserveDrawingBuffer:true});r.setPixelRatio(1);r.setSize(CELL,CELL);
 r.outputColorSpace=THREE.SRGBColorSpace;r.setClearColor(0x000000,0);document.body.appendChild(r.domElement);
 const out=document.createElement('canvas');out.width=CELL*COLS;out.height=CELL*ROWS;const ctx=out.getContext('2d');
@@ -17,7 +18,7 @@ function shoot(scene,row){const box=new THREE.Box3().setFromObject(scene.getObje
   meta[row]={W:2*half,base:(half-(ctr.y-box.min.y))/(2*half),height:size.y}}
 
 /* ---------- row 0: the Jacaranda from Poly Haven ---------- */
-{const scene=new THREE.Scene();lights(scene);
+if(FROM<=0){const scene=new THREE.Scene();lights(scene);
   const alpha=await new THREE.TextureLoader().loadAsync('jacaranda_tree_leaves_alpha_1k.png');alpha.flipY=false;
   const g=await new GLTFLoader().loadAsync('tree.gltf');const tree=g.scene;tree.name='tree';
   tree.traverse(o=>{if(o.isMesh){const ms=Array.isArray(o.material)?o.material:[o.material];ms.forEach(m=>{m.normalMap=null;m.roughnessMap=null;m.metalnessMap=null;m.roughness=.9;
@@ -66,6 +67,15 @@ function grow(sp,seed){const R=rng(seed);const bark=[],cards=[],strands=[];const
     strands.forEach(([o,L,a],i)=>{for(let k=0;k<2;k++){D.position.copy(o);D.rotation.set(0,a+k*1.57,0);D.scale.set(1,L,1);D.updateMatrix();im.setMatrixAt(i*2+k,D.matrix)}});g.add(im)}
   return g}
 let row=1;
-for(const [k,seed] of [['oak',11],['poplar',23],['willow',37]]){const scene=new THREE.Scene();lights(scene);scene.add(grow(SP[k],seed));shoot(scene,row++)}
+if(FROM<=1)for(const [k,seed] of [['oak',11],['poplar',23],['willow',37]]){const scene=new THREE.Scene();lights(scene);scene.add(grow(SP[k],seed));shoot(scene,row++)}
+
+/* ---------- rows 4-6: Poly Haven models (CC0); row 7 is free, glTF at 1k, each in its own folder: <id>/<id>_1k.gltf + <id>/<id>_leaves_alpha_1k.png ---------- */
+async function polyhaven(id,alphaFile){const alpha=await new THREE.TextureLoader().loadAsync(`${id}/${alphaFile}`);alpha.flipY=false;
+  const g=await new GLTFLoader().loadAsync(`${id}/${id}_1k.gltf`);const m0=g.scene;
+  m0.traverse(o=>{if(o.isMesh){const ms=Array.isArray(o.material)?o.material:[o.material];ms.forEach(m=>{m.normalMap=null;m.roughnessMap=null;m.metalnessMap=null;m.roughness=.9;
+    if(/leaves/.test(m.name)||m.alphaTest>0){m.alphaMap=alpha;m.transparent=false;m.alphaTest=.45;m.depthWrite=true}m.needsUpdate=true})}});
+  return m0}
+if(FROM<=4){row=4;
+  for(const id of ['island_tree_01','island_tree_02','tree_small_02']){const scene=new THREE.Scene();lights(scene);const t=await polyhaven(id,`${id}_leaves_alpha_1k.png`);t.name='tree';scene.add(t);shoot(scene,row++)}}
 window.__bake={png:out.toDataURL('image/png'),meta};
 </script></body></html>
