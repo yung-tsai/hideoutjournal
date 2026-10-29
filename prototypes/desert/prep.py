@@ -21,18 +21,27 @@ d = np.sqrt(((M - Cs) ** 2).sum(-1))                                   # how muc
 os.makedirs('layers/clouds', exist_ok=True); os.makedirs('shots', exist_ok=True)
 def keep_big(m, n): l, k = nd.label(m); s = nd.sum(m, l, range(k + 1)); return np.isin(l, [i for i in range(1, k + 1) if s[i] >= n])
 
-# ---------- clouds: bright shapes in the master's sky that the clean sky lacks ----------
-cloud = (d > 26) & (rows < 325) & (Ml > Cl + 6)
-cloud = nd.binary_closing(cloud, iterations=2); cloud = nd.binary_fill_holes(cloud)
-cloud |= nd.binary_dilation(cloud, iterations=2) & (d > 12) & (rows < 330)   # their soft edge pixels
-cloud = keep_big(cloud, 120)
+# ---------- a smooth model of the sky, from the clean picture (which has no clouds) ----------
+skyL = np.median(Cl[:, 300:1500], 1)                                   # the sky's brightness, row by row
+rc, gc, bc = C[..., 0], C[..., 1], C[..., 2]
+looks_sky = (rows < 360) & (Cl > skyL[:, None] - 22) & ~((rows >= 280) & ~((rc > gc + 25) & (gc > bc - 8)))
+SKY = np.empty_like(C)
+for c in range(3):
+    w = nd.gaussian_filter(looks_sky.astype(np.float32), 12); v = nd.gaussian_filter(np.where(looks_sky, C[..., c], 0), 12)
+    w2 = nd.gaussian_filter(looks_sky.astype(np.float32), 40); v2 = nd.gaussian_filter(np.where(looks_sky, C[..., c], 0), 40)
+    SKY[..., c] = np.where(w > .05, v / np.maximum(w, 1e-4), v2 / np.maximum(w2, 1e-4))
 
-# ---------- in front of the clouds: the saguaro, the windmill and the mountain tops ----------
-skyL = np.median(Cl[:, 300:1500], 1); skyL = np.maximum.accumulate(skyL[::-1])[::-1] * 0 + skyL   # the sky's brightness, row by row
+# ---------- in front of the clouds: everything in the clean picture that isn't sky (the saguaros with their lit edges, the windmill, the peaks) ----------
 mtn_lit = (rows > 270) & (rows < 480) & (r > 200) & (g < r * .48) & (b > 60)            # the pink-lit faces (a touch pinker than the sky)
-darker = Cl < skyL[:, None] - 25
-front = (rows < 345) & (((cols < 270) | (cols > 1540)) & darker | (rows >= 280) & (darker | mtn_lit)) & ~cloud
-front = keep_big(nd.binary_opening(front, iterations=1), 60)
+front = (rows < 360) & (np.sqrt(((C - SKY) ** 2).sum(-1)) > 20)
+front = nd.binary_closing(front, iterations=1); front = keep_big(front, 60)
+front = nd.binary_dilation(front, iterations=1) & (rows < 360)          # a pixel of margin, so no cloud colour shows at an edge
+
+# ---------- clouds: bright shapes in the master's sky that the clean sky lacks, never on anything in front ----------
+cloud = (d > 26) & (rows < 325) & (Ml > Cl + 6) & ~front
+cloud = nd.binary_closing(cloud, iterations=2); cloud = nd.binary_fill_holes(cloud) & ~front
+cloud |= nd.binary_dilation(cloud, iterations=2) & (d > 12) & (rows < 330) & ~front   # their soft edge pixels
+cloud = keep_big(cloud, 120)
 # ---------- the ocotillo: the master's thin stems the clean picture doesn't have ----------
 oco = (d > 30) & (cols > 900) & (cols < 1160) & (rows > 390) & (rows < 665)
 oco = nd.binary_closing(oco, iterations=1); oco |= nd.binary_dilation(oco, iterations=1) & (d > 16) & (cols > 900) & (cols < 1160) & (rows > 390) & (rows < 665)
@@ -74,6 +83,12 @@ mid &= ~nd.binary_dilation(keep_big(nd.binary_opening(cact, iterations=2), 300),
 mid = keep_big(mid, 6)
 klass[mid] = 5
 
+# the foreground flower clumps whole: any flower-coloured pixel the master has there (and the clean picture lacks) sways with the clump
+for x0, y0, x1, y1 in ((170, 690, 420, 830), (1130, 720, 1420, 840)):
+    box = np.zeros((H, W), bool); box[y0:y1, x0:x1] = True
+    fl = box & (d > 20) & ((((r > 140) & (b > g + 15) & (g < r * .5))) | ((r > 190) & (g > 50) & (g < 160) & (b < 70)) | ((b > r * .7) & (b > 100) & (g < b * .78)))
+    fl = nd.binary_dilation(fl, iterations=1) & box & (d > 14)
+    klass[fl & (klass != 4)] = 3
 moving = klass > 0
 # ---------- the still picture ----------
 match = ~nd.binary_dilation(moving | cloud, iterations=3)
@@ -105,6 +120,53 @@ base[hole] = fill[hole]
 rk_hidden = nd.binary_fill_holes(nd.binary_closing(rockpx, iterations=4)) & behind & (rows > FY0)
 if rk_hidden.any():
     _, (iy, ix) = nd.distance_transform_edt(~rockpx, return_indices=True); base[rk_hidden] = M[iy, ix][rk_hidden]
+
+# ---------- the open sandy patch: pebbles, darker sand, a faint dry wash, and a few low dry tufts (pixel-snapped to 2 px) ----------
+rng = np.random.default_rng(11)
+PCX, PCY, PRX, PRY = 840, 732, 420, 74                                # the patch, as an ellipse
+sandy = (base[..., 0] > 135) & (base[..., 1] > 65) & (base[..., 1] < 125) & (base[..., 2] > 45) & (base[..., 2] < 100) & ~moving
+sandL = np.stack([nd.gaussian_filter(base[..., c], 6) for c in range(3)], -1)   # the local sand colour
+def ell(x, y): return ((x - PCX) / PRX) ** 2 + ((y - PCY) / PRY) ** 2
+def put(x, y, col, w=2, h=2):
+    x, y = int(x) // 2 * 2, int(y) // 2 * 2
+    if 0 <= x < W - w and 0 <= y < H - h and sandy[y:y + h, x:x + w].all(): base[y:y + h, x:x + w] = col
+# a dry wash: a faint shallow channel curving across (darker floor, a lit lip on its far side)
+for tt in np.linspace(0, 1, 900):
+    x = 470 + tt * 760; y = 748 - 34 * np.sin(tt * 3.0 + .4) + 10 * np.sin(tt * 9.)
+    wdt = 8 + 5 * np.sin(tt * 5.1)
+    for k in range(-int(wdt), int(wdt) + 1, 2):
+        if rng.random() < .55: put(x, y + k * .5, sandL[int(y), int(x)] * (.88 + .04 * rng.random()))
+    if rng.random() < .35: put(x, y - wdt * .5 - 2, np.minimum(sandL[int(y), int(x)] * 1.1, 255))
+# darker patches of sand (2 px blocks, loose noise blobs)
+for _ in range(16):
+    cx, cy = PCX + rng.uniform(-.9, .9) * PRX, PCY + rng.uniform(-.8, .8) * PRY; rx, ry = rng.uniform(18, 46), rng.uniform(5, 11)
+    for y in range(int(cy - ry), int(cy + ry), 2):
+        for x in range(int(cx - rx), int(cx + rx), 2):
+            e = ((x - cx) / rx) ** 2 + ((y - cy) / ry) ** 2
+            if e < 1 and rng.random() > e * .9: put(x, y, sandL[y, x] * .92)
+# pebbles: denser toward the edges of the patch, a dark body and a lit top
+for _ in range(260):
+    x, y = PCX + rng.uniform(-1, 1) * PRX, PCY + rng.uniform(-1, 1) * PRY; e = ell(x, y)
+    if e > 1 or rng.random() > .25 + .75 * e: continue
+    sc = sandL[int(y), int(x)]; dark = sc * np.array([.55, .55, .72]); lit = np.minimum(sc * 1.18, 255)
+    if rng.random() < .7: put(x, y, dark)                                 # a single pixel
+    else: put(x, y, dark, 4, 2); put(x, y - 2, lit)                        # a small stone
+# low dry tufts near the edges of the patch: a separate layer, so they sway
+tuft = np.zeros((H, W, 4), np.uint8); STRAW = np.array([[118, 64, 26], [166, 96, 32], [205, 138, 62], [232, 176, 96]], np.float32)
+tufts = 0
+while tufts < 11:
+    a_ = rng.uniform(0, 2 * np.pi); e = rng.uniform(.72, .98); x0, y0 = PCX + np.cos(a_) * PRX * e, PCY + np.sin(a_) * PRY * e
+    x0, y0 = int(x0) // 2 * 2, int(y0) // 2 * 2
+    if not (0 < x0 < W and 0 < y0 < H) or not sandy[y0, x0]: continue
+    nb = rng.integers(7, 12)
+    for bl in range(nb):
+        hgt = rng.uniform(12, 26); lean = (bl - nb / 2) / nb * 1.4 + rng.uniform(-.25, .25)   # fanning out from the foot
+        for j in range(0, int(hgt), 2):
+            x, y = int(x0 + lean * j) // 2 * 2 + int((bl - nb / 2) * .8) * 2, y0 - j
+            if 0 <= x < W - 2 and 0 <= y < H: tuft[y:y + 2, x:x + 2] = np.append(STRAW[min(3, int(j / hgt * 3.99))], 255)
+    base[y0:y0 + 2, x0 - 10:x0 + 12] = (sandL[y0, x0] * .78)                 # a little shadow at its foot
+    tufts += 1
+Image.fromarray(tuft).save('layers/tufts.png')
 
 def rgba(m, box=None):
     a = np.dstack([M.astype(np.uint8), np.where(m, 255, 0).astype(np.uint8)])
