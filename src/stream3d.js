@@ -21,14 +21,14 @@ function fbm(x,y){let s=0,a=.5;for(let i=0;i<5;i++){s+=a*vnoise(x,y);x=x*2.03+17
 const sstep=(a,b,x)=>{const t=Math.min(1,Math.max(0,(x-a)/(b-a)));return t*t*(3-2*t)};
 const HILLS=[[-1300,-1600,60,460],[-500,-2100,40,430],[700,-1900,40,420],[1500,-1500,55,460]];
 // the stream: placed by where it falls in the frame (left bottom, an S through the middle, ending on the right third at the horizon)
-const SLN=Math.log(2600/8),SCP=[[0,-.6],[.3,-.16],[.52,.06],[.72,.15],[.87,.1],[1,.28]];
+const SLN=Math.log(250/8),SCP=[[0,-.08],[.2,.3],[.4,-.2],[.56,0],[1,0]];
 function streamF(u){for(let i=0;i<SCP.length-1;i++){const [u0,f0]=SCP[i],[u1,f1]=SCP[i+1];if(u<=u1||i===SCP.length-2){const t=Math.min(1,Math.max(0,(u-u0)/(u1-u0)));return f0+(f1-f0)*t*t*(3-2*t)}}}
-function streamX(d){if(d<8)return -2.72-(8-d)*.7+2.2*Math.sin(8*.09);const u=Math.min(1,Math.log(d/8)/SLN);
-  const wig=(2.2*Math.sin(d*.09)+1.3*Math.sin(d*.23+1.)+.7*Math.sin(d*.51+2.))*(1+d*.006);   // the natural wander of a small stream
+function streamX(d){d=Math.max(d,8);const u=Math.min(1,Math.log(d/8)/SLN);
+  const wig=(2.2*Math.sin(d*.09)+1.3*Math.sin(d*.23+1.)+.7*Math.sin(d*.51+2.))*(1+d*.006)*.5*sstep(10,60,d);   // a little natural wander, none close to you
   return streamF(u)*.566*d+wig}
-function streamW(d){return (3.1+d*.003)*(1+.22*Math.sin(d*.13+.7)+.12*Math.sin(d*.37))}
+function streamW(d){return (3.+d*.003+.5*(1-sstep(4,40,d)))*(1+.12*Math.sin(d*.13+.7)+.06*Math.sin(d*.37))}   // widest at your feet
 function baseH(x,z){const d=-z;
-  const fall=-4*sstep(4,140,d)+2.8*Math.exp(-(x*x+z*z)/650);   // you stand on a low rise above the water
+  const fall=-4*sstep(4,140,d);   // the meadow falls gently away from you
   const swell=(fbm(x*.0021+1.3,z*.0021+.4)-.5)*10*sstep(200,700,d)+(fbm(x*.0068+5.,z*.0068)-.5)*3*sstep(80,420,d);
   const tex=(fbm(x*.03,z*.03)-.5)*1.2*(1-sstep(80,250,d));
   const sx=streamX(Math.max(d,0)),vw=18+Math.max(d,0)*.07;
@@ -39,10 +39,16 @@ function baseH(x,z){const d=-z;
 const W0=baseH(streamX(20),-20)-.4;
 function waterY(d){return W0-d*.0012}   // water finds its level: nearly flat, falling gently away
 function inWater(x,z,pad){const d=Math.max(-z,0);return Math.abs(x-streamX(d))<streamW(d)/2+pad}
-function H(x,z){const d=Math.max(-z,0);const half=streamW(d)/2*(1+.35*(vnoise(x*.35,z*.35)-.5)),bank=Math.max(1.2+d*.006,3.4-d*.055),dist=Math.abs(x-streamX(d));let b=baseH(x,z);
+function H(x,z){const d=Math.max(-z,0);const half=streamW(d)/2*(1+.14*(vnoise(x*.35,z*.35)-.5))+(.5*(vnoise(x*.9+3.,z*.9)-.5)+.25*(vnoise(x*2.3,z*2.3+4.)-.5))*(1-sstep(100,160,d)),bank=Math.max(1.2+d*.006,3.4-d*.055),dist=Math.abs(x-streamX(d));let b=baseH(x,z);
   b+=Math.max(0,waterY(d)+.35-b)*(1-sstep(half+bank,half+bank+30,dist));   // banks always sit above the water
   const m=1-sstep(half,half+bank,dist);
   return b*(1-m)+(waterY(d)-.7)*m}
+function bankZone(x,z){const d=Math.max(-z,0),half=streamW(d)/2,bank=Math.max(1.2+d*.006,3.4-d*.055),dist=Math.abs(x-streamX(d));
+  return (1-sstep(half+bank+1.5,half+bank+4,dist))*(1-sstep(120,150,d))}
+function Hb(x,z){const k=bankZone(x,z);if(k<=0)return H(x,z);   // the banks close to you: bumpy, uneven ground
+  return H(x,z)+((vnoise(x*.35+2.,z*.35)-.5)*.34+(vnoise(x*1.3,z*1.3)-.5)*.24+(vnoise(x*3.1+5.,z*3.1)-.5)*.09+.03)*k}
+const EDGE=[[],[]];for(let i=0;i<=600;i++){const d=i*.25,sx=streamX(d);for(let s=0;s<2;s++){const side=s?1:-1;let o=streamW(d)/2-.6;for(let k=0;k<60&&Hb(sx+side*o,-d)<=waterY(d);k++)o+=.08;EDGE[s].push(o)}}
+function edgeX(d,side){const f=Math.min(Math.max(d,0),149.9)/.25,i=Math.floor(f),t=f-i,e=EDGE[side>0?1:0];return streamX(d)+side*(e[i]+(e[i+1]-e[i])*t)}   // where the water actually meets the bank
 
 const GL=`
 float hash12(vec2 p){vec3 p3=fract(vec3(p.xyx)*.1031);p3+=dot(p3,p3.yzx+33.33);return fract((p3.x+p3.y)*p3.z);}
@@ -57,7 +63,7 @@ float windF(vec2 p){return .5+.5*vnoise(p*.05+vec2(uTime*.12,uTime*.05));}
 float gustF(vec2 p){return smoothstep(.5,.85,vnoise(p*.02-WD*uTime*.12));}   // slow gusts rolling across the field with the wind
 vec3 haze(vec3 c,vec3 P,float k){float d=length(P-cameraPosition);return mix(c,uHaze,1.-exp(-d*k));}
 `;
-const FIELD=`uniform vec3 uG1,uG2,uG3,uStraw,uDark,uSheen;uniform float uW0;
+const FIELD=`uniform vec3 uG1,uG2,uG3,uStraw,uDark,uSheen;uniform float uW0;uniform vec3 uGB,uGM;
 vec3 fieldCol(vec2 p){vec2 w=vec2(fbm(p*.0012),fbm(p*.0012+4.))*420.;
   float a=fbm((p+w)*.0016),b=fbm((p-w)*.0032+3.),dry=fbm((p+w*.5)*.0024+11.);
   vec3 c=mix(uG1,uG2,smoothstep(.32,.68,a));c=mix(c,uG3,smoothstep(.45,.72,b)*.75);c=mix(c,uStraw,smoothstep(.48,.78,dry)*.72);return c;}
@@ -71,7 +77,7 @@ stage.appendChild(renderer.domElement);
 let DPR=Math.min(devicePixelRatio||1,1.75);
 const scene=new THREE.Scene();
 const camera=new THREE.PerspectiveCamera(46,4/3,.5,26000);
-const EYE=new THREE.Vector3(0,H(0,0)+1.9,0);
+const EYE=new THREE.Vector3(0,W0+3.8,0);   // a little above the water, looking down the river
 
 const env={uClipOn:{value:0},uClipY:{value:0},uTime:{value:0},uNight:{value:0},uHazeK:{value:.0003},uSunDir:{value:new THREE.Vector3()},uSunCol:{value:new THREE.Color()},uHaze:{value:new THREE.Color()},uAmb:{value:new THREE.Color()}};
 const U=o=>({...env,...o});
@@ -85,13 +91,14 @@ const sky=new THREE.Mesh(new THREE.SphereGeometry(20000,64,32),new THREE.ShaderM
   void main(){vec3 d=normalize(vD);float y=max(d.y,0.);
     vec3 c=mix(uHor,uTop,smoothstep(0.,.5,pow(y,.8)));
     float s=max(dot(d,uSunDir),0.);
-    c+=uSunCol*(pow(s,4.)*.12+pow(s,32.)*.3)*(1.-uNight*.7);
-    float disc=smoothstep(mix(.99963,.99935,uNight),mix(.99978,.9995,uNight),s);
+    c+=uSunCol*(pow(s,8.)*.1+pow(s,30.)*.3+pow(s,140.)*.4)*(1.-uNight*.7);   // a big warm glow around the low sun
+    c=mix(c,uSunCol*1.05,pow(s,4.)*(1.-smoothstep(0.,.22,y))*.3*(1.-uNight));
+    float disc=smoothstep(mix(.99925,.99935,uNight),mix(.99948,.9995,uNight),s);
     c=mix(c,mix(vec3(1.,.98,.9),vec3(.93,.95,1.),uNight),disc);
     vec3 q3=d*210.;vec3 id=floor(q3);float h=hash13(id);
     c+=vec3(.9,.93,1.)*step(.9965,h)*smoothstep(.32,.0,length(fract(q3)-.5))*uNight*smoothstep(.03,.3,d.y)*(.55+.45*sin(uTime*1.6+h*90.))*1.2;
     if(d.y>0.){
-      vec2 cp=d.xz/(d.y+.07)*.55+vec2(uTime*.0035,uTime*.0012);
+      vec2 cp=d.xz/(d.y+.07)*.8+vec2(uTime*.0035,uTime*.0012);
       vec2 w=vec2(fbm(cp*1.3+3.1),fbm(cp*1.3+8.7));
       float n=fbm(cp*1.6+w*1.4);
       float cov=smoothstep(1.-uCover-.03,1.-uCover+.12,n);
@@ -126,18 +133,18 @@ const mtnU=U({uRock:col(),uShadow:col(),uK:{value:.00016}});
     void main(){vec3 N=normalize(vN);float l=clamp(dot(N,uSunDir),0.,1.);
       vec3 c=mix(uShadow,uRock,smoothstep(.0,.7,l))*(.92+.16*vnoise(vW.xz*.004));
       c=mix(c,c*.86,smoothstep(.5,.95,1.-N.y)*.5);
-      float d=length(vW-cameraPosition);c=mix(c,uHaze,1.-exp(-d*uHazeK*.8));gl_FragColor=vec4(c,1.);}`}));
+      float d=length(vW-cameraPosition);c=mix(c,uHaze,1.-exp(-d*uHazeK*.45));gl_FragColor=vec4(c,1.);}`}));
   m.frustumCulled=false;scene.add(m);
 }
 
 /* ---------------- the plain: wild grass in soft blends of green, olive and dry gold, scrub, cloud shadows ---------------- */
-const fieldU=U({uG1:col(),uG2:col(),uG3:col(),uStraw:col(),uDark:col(),uSheen:col(),uW0:{value:W0}});
+const fieldU=U({uG1:col(),uG2:col(),uG3:col(),uStraw:col(),uDark:col(),uSheen:col(),uW0:{value:W0},uGB:col(),uGM:col()});
 {
   const NX=PHONE?240:340,NZ=PHONE?220:300;const xs=[],zs=[];
   for(let i=0;i<=NX;i++){const s=i/NX*2-1;xs.push(Math.sign(s)*Math.pow(Math.abs(s),2.1)*9000)}
   for(let j=0;j<=NZ;j++){const s=j/NZ;zs.push(14-Math.pow(s,2.3)*7000)}
   const pos=new Float32Array((NX+1)*(NZ+1)*3),idx=[];let k=0;
-  for(let j=0;j<=NZ;j++)for(let i=0;i<=NX;i++){pos[k++]=xs[i];pos[k++]=H(xs[i],zs[j]);pos[k++]=zs[j]}
+  for(let j=0;j<=NZ;j++)for(let i=0;i<=NX;i++){pos[k++]=xs[i];pos[k++]=H(xs[i],zs[j])-.8*bankZone(xs[i],zs[j]);pos[k++]=zs[j]}
   for(let j=0;j<NZ;j++)for(let i=0;i<NX;i++){const a=j*(NX+1)+i,b=a+1,c=a+NX+1,d=c+1;idx.push(a,b,c,b,d,c)}
   const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(pos,3));g.setIndex(idx);g.computeVertexNormals();
   const m=new THREE.Mesh(g,new THREE.ShaderMaterial({uniforms:fieldU,
@@ -150,13 +157,24 @@ const fieldU=U({uG1:col(),uG2:col(),uG3:col(),uStraw:col(),uDark:col(),uSheen:co
       float st=fbm(vec2(along*.35,across*3.));c*=mix(1.,.8+.4*st,1.-smoothstep(150.,1400.,dist));
       float fine=vnoise(vec2(along*2.,across*14.));c*=mix(1.,.86+.28*fine,1.-smoothstep(80.,500.,dist));
       c=mix(c,uSheen,smoothstep(.55,.85,fbm(p*.03+1.))*.1*(1.-uNight));
-      float wet=(1.-smoothstep(.04,.55,vW.y-(uW0+vW.z*.0012)))*(1.-smoothstep(120.,420.,dist));c=mix(c,c*vec3(.5,.47,.4),wet*.75);   // damp soil at the water's edge
+      float hw=vW.y-(uW0+vW.z*.0012),nr=1.-smoothstep(35.,60.,dist);
+      c=mix(c,mix(uGB,uGM,.5)*(.85+.3*fbm(p*.6)),nr*.65);                                // under the grass: the grass's own colour, so gaps don't show
+      c=mix(c,vec3(.2,.16,.11)*(.8+.4*vnoise(p*3.)),(1.-smoothstep(.02,.22,hw))*nr*.8);   // dark wet mud at the waterline
+      float wet=(1.-smoothstep(.1,.5,hw))*(1.-smoothstep(120.,420.,dist));c=mix(c,c*vec3(.62,.6,.55),wet*.5);
       c*=1.+.08*gustF(p)*(1.-smoothstep(250.,1500.,dist));
       vec3 N=normalize(vN);float l=dot(N,uSunDir);c*=uAmb+uSunCol*clamp(l*.6+.38,0.,1.)*.65;c*=mix(.92,1.,smoothstep(.8,1.,N.y));
       float cs=smoothstep(.5,.66,fbm(p*.0011+vec2(uTime*.0045,uTime*.0016)));c*=1.-.32*cs*(1.-uNight);
       c=haze(c,vW,uHazeK);
       gl_FragColor=vec4(c,1.);}`}));
   scene.add(m);
+  // the banks close to you: a fine, bumpy strip of ground along both sides of the water (the coarse ground sinks out of the way under it)
+  {const sp=[],si=[],COLS=26;let rows=0;
+    for(let d=0;d<150;d+=.22*(1+d*.035)){rows++;const half=streamW(d)/2,bank=Math.max(1.2+d*.006,3.4-d*.055),sx=streamX(d);
+      for(const side of [-1,1])for(let c=0;c<=COLS;c++){const o=-.8+Math.pow(c/COLS,1.6)*(bank+5.3),x=sx+side*(half+o);sp.push(x,Hb(x,-d),-d)}}
+    const RW=(COLS+1)*2;for(let r=0;r<rows-1;r++)for(let s=0;s<2;s++)for(let c=0;c<COLS;c++){const a=r*RW+s*(COLS+1)+c,b=a+RW;si.push(a,b,a+1,a+1,b,b+1)}
+    const g2=new THREE.BufferGeometry();g2.setAttribute('position',new THREE.Float32BufferAttribute(sp,3));g2.setIndex(si);g2.computeVertexNormals();
+    const strip=new THREE.Mesh(g2,new THREE.ShaderMaterial({uniforms:fieldU,vertexShader:m.material.vertexShader,fragmentShader:m.material.fragmentShader,side:THREE.DoubleSide,
+      polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-4}));strip.frustumCulled=false;scene.add(strip)}
 }
 
 /* ---------------- the stream: real reflections of the banks, trees and sky; deep in the middle, shallow at the edges ---------------- */
@@ -164,7 +182,7 @@ const reflRT=new THREE.WebGLRenderTarget(2,2,{type:THREE.HalfFloatType});const c
 const waterU=U({uTop:skyU.uTop,uHor:skyU.uHor,uDeep:col(),uBed:col(),uRefl:{value:reflRT.texture},uTexMat:{value:texMat}});let waterMesh;
 {
   const ROWS=PHONE?380:620,COLS=8,pos=[],at=[],as=[],ad=[],idx=[];let acc=0,prev=null;
-  for(let i=0;i<=ROWS;i++){const d=1.5*Math.pow(2700/1.5,i/ROWS),z=-d,x=streamX(d),half=streamW(d)/2+.5+d*.003,y=waterY(d);
+  for(let i=0;i<=ROWS;i++){const d=1.5*Math.pow(2700/1.5,i/ROWS),z=-d,x=streamX(d),half=streamW(d)/2+Math.max(1.2+d*.006,3.4-d*.055)+.5+d*.003,y=waterY(d);
     if(prev)acc+=Math.hypot(x-prev[0],z-prev[1]);prev=[x,z];
     for(let c=0;c<=COLS;c++){const t=c/COLS*2-1,xx=x+t*half;pos.push(xx,y,z);at.push(t);as.push(acc);ad.push(y-H(xx,z))}}   // ad: how deep the water is here
   for(let i=0;i<ROWS;i++)for(let c=0;c<COLS;c++){const a=i*(COLS+1)+c,b=a+COLS+1;idx.push(a,b,a+1,a+1,b,b+1)}
@@ -181,13 +199,19 @@ const waterU=U({uTop:skyU.uTop,uHor:skyU.uHor,uDeep:col(),uBed:col(),uRefl:{valu
       vec3 N=normalize(vec3((a*.05+c*.022+sk*.025)*det*(1.+sh),1.,(b*.06+c*.018)*det*(1.+sh)));
       vec4 rp=vRP;rp.xy+=N.xz*rp.w*.025;vec3 refl=texture2DProj(uRefl,rp).rgb;
       float ct=max(dot(-V,N),0.);float fres=.03+.97*pow(1.-ct,5.);
-      float edge=max(smoothstep(.55,.98,abs(vT)),sh);
-      vec3 bed=uBed*(uAmb*.75+uSunCol*.5);vec3 body=mix(uDeep,bed,edge*.8);
-      vec3 col=mix(body,refl*vec3(.88,.93,.91),clamp(fres*1.1+.14,0.,.94)*(1.-sh*.6));
-      col=mix(col,bed*1.15,smoothstep(.1,0.,vD)*.35);                                 // a soft wet line where water meets the bank
-      vec3 R=reflect(V,N);float sd=max(dot(R,uSunDir),0.);col+=uSunCol*(pow(sd,180.)*1.1+pow(sd,24.)*.08)*(1.-uNight*.6);
-      float fl=step(.86,vnoise(vec2(vS*9.-uTime*2.2,vT*30.)))*smoothstep(.6,.95,abs(vT))*smoothstep(60.,8.,dist);
-      col=mix(col,vec3(.92)*(uAmb+uSunCol*.4),fl*.14);
+      float edge=smoothstep(.5,.97,abs(vT)),nr=1.-smoothstep(20.,200.,dist);
+      vec3 body=uDeep*(.85+.3*fbm(vW.xz*.05+vec2(uTime*.01,0.)));                       // a little depth and variation
+      vec3 col=mix(body,refl*vec3(.5,.5,.7),clamp(fres*1.1+.14,0.,.94));
+      col*=mix(1.,.7,max(edge,sh*.8)*nr+edge*.3*(1.-nr));                               // darker along the banks, where it mirrors the bank and grass
+      col*=1.+.18*(vnoise(vec2(vS*.6-t*.5,vT*2.5))-.5)*2.*det;                          // soft ripples across the whole surface
+      vec3 R=reflect(V,N);float sd=max(dot(R,uSunDir),0.);col+=uSunCol*(pow(sd,180.)*.8+pow(sd,12.)*.28)*(1.-uNight*.6);
+      float ang=sqrt(max(2.*(1.-dot(normalize(V.xz),normalize(uSunDir.xz))),0.));       // how far this point is from straight below the sun
+      float wid=mix(.012,.06,1.-smoothstep(4.,90.,dist)),path=(1.-smoothstep(wid*.1,wid*1.25,ang))*(1.-uNight);   // a soft-edged column, wider close to you
+      vec2 fq=vec2(vW.x,cameraPosition.y-vW.y)/dist*vec2(110.,190.);                     // by viewing angle: flecks come out about round on screen
+      float f1=vnoise(fq*1.6+vec2(uTime*.7,-uTime*1.1)),f2=vnoise(fq*3.7+vec2(-uTime*1.6,uTime*.9)+7.),f3=vnoise(fq*.7-uTime*.25);
+      float fleck=smoothstep(.56,.74,f1*.6+f3*.4)*.8+smoothstep(.64,.84,f2)*.9*smoothstep(.35,.55,f3);   // big and small flecks, coming and going
+      col+=uSunCol*path*(.12+1.6*fleck);                                                  // the glittering path of sun running down the water toward you
+      col+=(uSunCol*.5+refl*.5)*smoothstep(.86,.97,f2)*smoothstep(.55,.75,f1)*(1.-path)*det*.35;   // a faint, sparse shimmer everywhere else
       gl_FragColor=vec4(haze(col,vW,uHazeK),1.);}`}));
   waterMesh.frustumCulled=false;scene.add(waterMesh);
 }
@@ -196,9 +220,9 @@ function renderReflection(){const Y=waterY(60),p=camera.position;
   const look=new THREE.Vector3(0,0,-1).applyQuaternion(camera.quaternion).multiplyScalar(100).add(p);look.y=2*Y-look.y;
   camR.up.set(0,-1,0);camR.lookAt(look);camR.updateMatrixWorld();camR.updateProjectionMatrix();
   texMat.set(.5,0,0,.5, 0,.5,0,.5, 0,0,.5,.5, 0,0,0,1).multiply(camR.projectionMatrix).multiply(camR.matrixWorldInverse);
-  grassMesh.visible=false;waterMesh.visible=false;if(flowerMesh)flowerMesh.visible=false;env.uClipOn.value=1;env.uClipY.value=Y-.05;sky.position.copy(camR.position);
+  grassMesh.visible=false;waterMesh.visible=false;env.uClipOn.value=1;env.uClipY.value=Y-.05;sky.position.copy(camR.position);
   renderer.setRenderTarget(reflRT);renderer.clear();renderer.render(scene,camR);renderer.setRenderTarget(null);
-  grassMesh.visible=true;waterMesh.visible=true;if(flowerMesh)flowerMesh.visible=true;env.uClipOn.value=0;sky.position.copy(camera.position)}
+  grassMesh.visible=true;waterMesh.visible=true;env.uClipOn.value=0;sky.position.copy(camera.position)}
 
 /* ---------------- uncut grass tufts across the middle distance ---------------- */
 {
@@ -210,14 +234,14 @@ function renderReflection(){const Y=waterY(60),p=camera.position;
   const im=new THREE.InstancedMesh(geo,new THREE.ShaderMaterial({side:THREE.DoubleSide,uniforms:fieldU,
     vertexShader:GL+FIELD+`varying vec3 vW,vC;varying float vT,vF;
     void main(){vec4 o=modelMatrix*instanceMatrix*vec4(0.,0.,0.,1.);vec3 p=position;float r=hash12(o.xz);
-      float gu=gustF(o.xz),far=smoothstep(40.,260.,length(o.xyz-cameraPosition));
+      float gu=gustF(o.xz),far=smoothstep(15.,160.,length(o.xyz-cameraPosition));
       p.x+=sin(uTime*(1.1+r)+r*30.)*.05*uv.y*uv.y;vec4 w=modelMatrix*instanceMatrix*vec4(p,1.);w.xz+=WD*gu*.1*uv.y*uv.y*length(instanceMatrix[1].xyz);
       vC=fieldCol(o.xz)*(.85+.3*r*(1.-.7*far))*(1.+.1*gu);vF=far;vT=uv.y;vW=w.xyz;gl_Position=projectionMatrix*viewMatrix*w;}`,
     fragmentShader:GL+FIELD+`varying vec3 vW,vC;varying float vT,vF;
     void main(){clipW(vW);vec3 c=mix(vC*mix(.62,.8,vF),mix(vC*mix(1.12,.98,vF),uStraw,.25*(1.-vF)),vT);c*=uAmb+uSunCol*.45;gl_FragColor=vec4(haze(c,vW,uHazeK),1.);}`}),N);
   const M=new THREE.Matrix4(),Q=new THREE.Quaternion(),S=new THREE.Vector3(),P=new THREE.Vector3(),E=new THREE.Euler();
   for(let i=0;i<N;i++){let z,x,tr=0;do{z=-36-Math.pow(Math.random(),1.6)*820;x=(Math.random()*2-1)*(20+Math.abs(z)*.66);tr++}while(H(x,z)<waterY(-z)+.1&&tr<8);
-    P.set(x,H(x,z)-.1,z);E.set(0,Math.random()*6.28,0);Q.setFromEuler(E);const sc=(.55+Math.random()*.6)*(1+Math.abs(z)*.004);S.set(sc*1.3,sc,sc*1.3);M.compose(P,Q,S);im.setMatrixAt(i,M)}
+    P.set(x,H(x,z)-.1,z);E.set(0,Math.random()*6.28,0);Q.setFromEuler(E);const sc=(.32+Math.random()*.28)*(1+Math.abs(z)*.004);S.set(sc*1.3,sc,sc*1.3);M.compose(P,Q,S);im.setMatrixAt(i,M)}
   im.frustumCulled=false;scene.add(im);
 }
 
@@ -244,7 +268,7 @@ function treeGeo(kind,seed){let rs=seed*9301+49297;const rnd=()=>{rs=(rs*9301+49
     void main(){clipW(vW);vec3 N=normalize(vN);float cl=fbm(vW.xz*.6+vW.y*.9);N=normalize(N+(cl-.5)*.7);
       float l=clamp(dot(N,uSunDir)*.6+.4,0.,1.);vec3 c=vPart>.5?mix(uDark,uLit,l)*(.82+.36*cl)*mix(.62,1.,smoothstep(-.5,.45,normalize(vN).y)):uBark*(.7+.4*l);
       c*=uAmb*.75+uSunCol*.4;gl_FragColor=vec4(haze(c,vW,uHazeK),1.);}`});
-  const variants=[[treeGeo(2,5),PHONE?420:800]];
+  const variants=[[treeGeo(2,5),PHONE?200:400]];
   const creeks=[z=>-z*(.32*Math.sin(z*.0011+.6)+.12*Math.sin(z*.0029+2.1))-40,z=>z*.42+120*Math.sin(z*.004)];
   const gauss=()=>(Math.random()+Math.random()+Math.random()-1.5)/1.5;
   const M=new THREE.Matrix4(),Q=new THREE.Quaternion(),S=new THREE.Vector3(),P=new THREE.Vector3(),E=new THREE.Euler();
@@ -253,7 +277,7 @@ function treeGeo(kind,seed){let rs=seed*9301+49297;const rnd=()=>{rs=(rs*9301+49
       if(k<(vi===3?.55:.86)){const ci=Math.random()<.65?0:1;z=-460-Math.pow(Math.random(),1.2)*4000;if(ci===1&&z>-700)continue;
         if(vnoise(z*.0045+ci*7,ci*3.1)<.42)continue;                                   // groves with gaps between them
         x=streamX(-z)+gauss()*(vi===3?150:60)}
-      else{x=(Math.random()*2-1)*4200;z=-300-Math.random()*4200}                     // a few loners and scattered scrub
+      else{x=(Math.random()*2-1)*4200;z=-800-Math.random()*3800}                     // a few loners and scattered scrub
       if(z>-150||z<-5200||inWater(x,z,3))continue;
       const sc=(vi===3?1.6:2.1)+Math.random()*(vi===3?1.4:2.6);P.set(x,H(x,z)-.25,z);E.set(0,Math.random()*6.28,0);Q.setFromEuler(E);
       S.set(sc*(.9+Math.random()*.3),sc*(.8+Math.random()*.4),sc*(.9+Math.random()*.3));M.compose(P,Q,S);im.setMatrixAt(n++,M)}
@@ -270,24 +294,24 @@ const TREE_ATLAS='data:image/webp;base64,UklGRtyMIgBXRUJQVlA4WAoAAAAQAAAA/w8A/w8
   const add=(x,z,k,sc,yw)=>{pos.push(x,H(x,z)-.3,z,sc);kinds.push(k);yaw.push(yw??Math.random()*6.2832);n++};
   const SCALE=[[.34,.32],[.78,.5],[.85,.45],[.85,.4],[2.1,1.],[2.5,1.],[2.,.8]];
   // loose clumps and loners across both sides of the valley, at every distance
-  const NC=PHONE?300:480;let guard=0;
-  while(n<NC&&guard<NC*30){guard++;const d=160+Math.pow(Math.random(),1.25)*2600,x0=(Math.random()*2-1)*.98*.566*d;
-    if(inWater(x0,-d,10)||vnoise(x0*.004+3.,d*.004)<.46)continue;
-    const r=Math.random(),k=r<.3?1:r<.48?0:r<.58?2:r<.74?4:r<.86?5:6;const cnt=1+Math.floor(Math.random()*Math.random()*5);
-    for(let i=0;i<cnt;i++){const x=x0+gauss()*(5+d*.01),z=-d+gauss()*(5+d*.01);if(inWater(x,z,4))continue;add(x,z,k,SCALE[k][0]+Math.random()*SCALE[k][1])}}
+  const NC=PHONE?380:640;let guard=0;
+  while(n<NC&&guard<NC*30){guard++;const d=170+Math.pow(Math.random(),2.2)*1300,sx=(Math.random()*2-1)*1.04,x0=sx*.566*d;   // one band across the middle distance
+    if(inWater(x0,-d,18)||vnoise(sx*5.+3.,d*.0015)<.42)continue;                       // clumps, with gaps between them
+    if(Math.abs(sx)<.17&&Math.random()<.94)continue;                                     // keep the river's end under the sun open
+    const r=Math.random(),k=r<.42?1:r<.52?2:r<.72?4:r<.86?5:6;const cnt=1+Math.floor(Math.random()*Math.random()*5);
+    for(let i=0;i<cnt;i++){const x=x0+gauss()*(5+d*.01),z=-d+gauss()*(5+d*.01);if(inWater(x,z,4))continue;add(x,z,k,(SCALE[k][0]+Math.random()*SCALE[k][1])*(.75+.5*Math.random()))}}
   // willows along the water
-  for(let i=0;i<(PHONE?60:110);i++){const d=210+Math.pow(Math.random(),1.2)*1300,side=Math.random()<.5?-1:1;const x=streamX(d)+side*(streamW(d)/2+3+Math.random()*8);
+  for(let i=0;i<(PHONE?20:40);i++){const d=210+Math.pow(Math.random(),1.2)*1300,side=Math.random()<.5?-1:1;const x=streamX(d)+side*(streamW(d)/2+3+Math.random()*8);
     if(vnoise(d*.01,side)<.4)continue;add(x,-d,3,.55+Math.random()*.32)}
-  // a group on the left to balance the main tree
-  for(const [x,d,k,sc] of [[-40,96,1,1.15],[-52,110,1,.9],[-31,114,2,1.05],[-58,128,1,.75]])add(x,-d,k,sc);
-  // the main tree on the right third, with companions
-  for(const [x,d,k,sc,yw] of [[25,130,0,.88,1.2],[37,150,1,1.0,4.1],[13,168,1,.8,2.6],[45,121,2,1.0,5.3]])add(x,-d,k,sc,yw);
+  // framing the river: a larger tree on the left third, a fuller group on the right (placed by where they fall in the frame)
+  for(const [sx,d,k,sc] of [[-.42,64,1,1.1],[-.58,80,4,2.6],[-.4,96,1,.8]])add(sx*.566*d,-d,k,sc);
+  for(const [sx,d,k,sc] of [[.62,74,1,1.0],[.8,86,4,2.8],[.5,98,5,3.],[.92,66,1,1.05],[.72,112,6,2.4]])add(sx*.566*d,-d,k,sc);
   const g=new THREE.InstancedBufferGeometry();
   g.setAttribute('position',new THREE.Float32BufferAttribute([-.5,0,0, .5,0,0, .5,1,0, -.5,1,0],3));g.setIndex([0,1,2,0,2,3]);
   g.setAttribute('aInst',new THREE.InstancedBufferAttribute(new Float32Array(pos),4));g.setAttribute('aKind',new THREE.InstancedBufferAttribute(new Float32Array(kinds),1));g.setAttribute('aYaw',new THREE.InstancedBufferAttribute(new Float32Array(yaw),1));
   g.instanceCount=n;
   const m=new THREE.Mesh(g,new THREE.ShaderMaterial({uniforms:U({uAtlas:{value:tex}}),side:THREE.DoubleSide,
-    vertexShader:GL+`attribute vec4 aInst;attribute float aYaw,aKind;varying vec2 vUv;varying vec3 vW;varying float vT;
+    vertexShader:GL+`attribute vec4 aInst;attribute float aYaw,aKind;varying vec2 vUv;varying vec3 vW;varying float vT,vB;
     void main(){vec3 base=aInst.xyz;float s=aInst.w;vec3 to=cameraPosition-base;to.y=0.;vec3 f=normalize(to);vec3 rt=vec3(f.z,0.,-f.x);
       int k=int(aKind+.5);float KW=k==0?25.15:k==1?14.39:k==2?9.89:k==3?10.33:k==4?5.178:k==5?4.334:4.693;
       float KB=k==0?.113:k==1?.0146:k==2?.0146:k==3?.019:k==4?.0146:k==5?.107:.0146;
@@ -295,10 +319,12 @@ const TREE_ATLAS='data:image/webp;base64,UklGRtyMIgBXRUJQVlA4WAoAAAAQAAAA/w8A/w8
       float flip=aYaw>3.1416?-1.:1.;vec3 p=base+rt*(position.x*W*flip)+vec3(0.,(position.y-KB)*W,0.);
       p+=rt*sin(uTime*(.6+fract(aYaw)*.4)+aYaw*9.)*.05*W*max(position.y-.35,0.);
       vUv=vec2((idx+position.x+.5)/8.,1.-(aKind+1.-position.y)/8.);
-      vT=fract(aYaw*7.13);vW=p;gl_Position=projectionMatrix*viewMatrix*vec4(p,1.);}`,
-    fragmentShader:GL+`uniform sampler2D uAtlas;varying vec2 vUv;varying vec3 vW;varying float vT;
+      vT=fract(aYaw*7.13);vB=smoothstep(.2,.9,dot(-f,normalize(vec3(uSunDir.x,0.,uSunDir.z))));vW=p;gl_Position=projectionMatrix*viewMatrix*vec4(p,1.);}`,
+    fragmentShader:GL+`uniform sampler2D uAtlas;varying vec2 vUv;varying vec3 vW;varying float vT,vB;
     void main(){clipW(vW);vec4 t=texture2D(uAtlas,vUv);if(t.a<.4)discard;
-      vec3 c=t.rgb*vec3(.95,1.08,.9)*(1.1+.25*vT)*(uAmb*.85+uSunCol*.6);gl_FragColor=vec4(haze(c,vW,uHazeK),1.);}`}));
+      vec3 c=t.rgb*vec3(.95,1.08,.9)*(1.1+.25*vT)*(uAmb*.85+uSunCol*.6);
+      c*=mix(1.,.5,vB);   // backlit: deep green in its own shade
+      gl_FragColor=vec4(haze(c,vW,uHazeK),1.);}`}));
   m.frustumCulled=false;scene.add(m);
 }
 
@@ -324,12 +350,12 @@ const ROCK_GLB=['Z2xURgIAAAAw4gEApBYAAEpTT057ImFzc2V0Ijp7ImdlbmVyYXRvciI6ImdsVEY
         g.translate(-(b.min.x+b.max.x)/2,-b.min.y,-(b.min.z+b.max.z)/2);g.scale(1/Math.max(s.x,s.z),1/Math.max(s.x,s.z),1/Math.max(s.x,s.z));   // each stone one unit across, sitting on 0
         stones.push([g,m,[]])})});
     const M=new THREE.Matrix4(),Q=new THREE.Quaternion(),S=new THREE.Vector3(),P=new THREE.Vector3(),E=new THREE.Euler();
-    const N=PHONE?60:110;let n=0,guard=0;
-    while(n<N&&guard<N*60){guard++;const d=7+Math.pow(Math.random(),1.5)*150,side=Math.random()<.5?-1:1;
+    const N=PHONE?14:26;let n=0,guard=0;
+    while(n<N&&guard<N*60){guard++;const d=9+Math.pow(Math.random(),1.3)*110,side=Math.random()<.5?-1:1;
       if(vnoise(d*.035+(side>0?13.:0.),2.7)<.42)continue;                                // in little groups, with long empty stretches
-      const x=streamX(d)+side*(streamW(d)/2+Math.random()*1.4-.35),z=-d;                  // at the waterline, some just in the shallows
-      const sc=(.45+Math.pow(Math.random(),2.))*(1+d*.007);
-      P.set(x,Math.max(H(x,z),waterY(d)-sc*.22)-sc*.12,z);   // in the water a stone rests with its top showing
+      const x=edgeX(d,side)+side*(Math.random()*.4-.12),z=-d;   // on the bank at the waterline, some just in the shallows
+      const sc=(.28+Math.pow(Math.random(),2.)*.45)*(1+d*.006);
+      P.set(x,Hb(x,z)-sc*.3,z);   // set into the bank
       E.set((Math.random()-.5)*.3,Math.random()*6.28,(Math.random()-.5)*.3);Q.setFromEuler(E);
       S.set(sc*(.8+Math.random()*.4),sc*(.7+Math.random()*.5),sc*(.8+Math.random()*.4));M.compose(P,Q,S);
       stones[Math.floor(Math.random()*stones.length)][2].push(M.clone());n++}
@@ -372,40 +398,33 @@ const grassU=U({uBase:col(),uMid:col(),uTip:col(),uStraw:col(),uG1:fieldU.uG1,uG
       
       gl_FragColor=vec4(haze(c,vW,uHazeK),1.);}`}),N);
   const M=new THREE.Matrix4(),Q=new THREE.Quaternion(),S=new THREE.Vector3(),P=new THREE.Vector3(),E=new THREE.Euler();
-  const REEDS=PHONE?1500:3000,LUSH=new Float32Array(N);
-  for(let i=0;i<N;i++){let x,z,h;
-    if(i<REEDS){const d=7+Math.pow(Math.random(),1.5)*95;z=-d;const side=Math.random()<.5?-1:1;x=streamX(d)+side*(streamW(d)/2-.1+Math.random()*.9);h=(.55+Math.random()*.6)*(.6+.4*sstep(7,22,d))}
+  const REEDS=PHONE?1500:3000,BANK=PHONE?14000:32000,NB=REEDS+BANK,LUSH=new Float32Array(N),LB=new Float32Array(NB);
+  const gB=g.clone(),bankIm=new THREE.InstancedMesh(gB,im.material,NB);   // reeds and the grass along the banks: these also show in the water's reflection
+  for(let i=0;i<N+NB;i++){let x,z,h,lean=0,lush=1;
+    if(i<REEDS){const d=7+Math.pow(Math.random(),1.5)*95;z=-d;const side=Math.random()<.5?-1:1;x=edgeX(d,side)+side*(Math.random()*.8-.1);h=(.55+Math.random()*.6)*(.6+.4*sstep(7,22,d));
+      lean=(.1+Math.pow(Math.random(),2)*.4)*side}                                                                   // reeds lean out over the water
+    else if(i<NB){const d=3+Math.pow(Math.random(),1.6)*70;z=-d;const side=Math.random()<.5?-1:1,o=Math.pow(Math.random(),1.8)*2.8-.1;   // thickest right at the water's edge
+      x=edgeX(d,side)+side*o;h=(.16+Math.random()*.3)*(.55+.45*sstep(2,10,d))*(.75+.5*vnoise(x*.4,z*.4))*(o<.7&&vnoise(d*.3,side*5.)<.32?0:1);   // a few gaps where the mud shows
+      if(o<.5)lean=(.2+Math.random()*.45)*side}                                                                       // and hanging out over it
     else{let tr=0;do{const d=2+Math.pow(Math.random(),1.7)*50;z=-d;x=(Math.random()*2-1)*(1.6+d*.66);tr++}while(H(x,z)<waterY(-z)+.08&&tr<8);
-      const dd=-z,k=Math.random();h=(k<.6?.14+Math.random()*.14:k<.92?.28+Math.random()*.16:.44+Math.random()*.22)*(1-.35*sstep(10,50,dd))*.62*(.4+.6*sstep(2,10,dd))}
-    let lush=1,lean=0;if(i>=REEDS){lush=1-sstep(.5,9,Math.abs(x-streamX(-z))-streamW(-z)/2);h*=.75+.5*vnoise(x*.3,z*.3)}   // clumps, greener by the water
-    else lean=(.12+Math.pow(Math.random(),2)*.55)*Math.sign(x-streamX(-z));                                                 // reeds lean out over the water
-    LUSH[i]=lush;P.set(x,H(x,z)-.04,z);E.set((Math.random()-.5)*.22,Math.random()*Math.PI*2,lean||(Math.random()-.5)*.22,lean?'ZYX':'XYZ');Q.setFromEuler(E);
-    S.set(.9+Math.random()*.7,h,1);M.compose(P,Q,S);im.setMatrixAt(i,M)}
-  g.setAttribute('aLush',new THREE.InstancedBufferAttribute(LUSH,1));im.frustumCulled=false;scene.add(im);grassMesh=im;
-}
-
-/* ---------------- wildflowers scattered through the near grass, in loose patches ---------------- */
-let flowerMesh;
-{
-  const parts=[];for(let i=0;i<3;i++){const g=new THREE.PlaneGeometry(1,1);if(i<2)g.rotateY(i*Math.PI/2);else g.rotateX(-Math.PI/2);parts.push(g)}
-  const geo=mergeGeometries(parts);
-  const N=PHONE?380:800,cols=new Float32Array(N*3),PAL=[[.86,.84,.78],[.9,.8,.42],[.7,.62,.82]];   // white, pale yellow, soft violet
-  const im=new THREE.InstancedMesh(geo,new THREE.ShaderMaterial({side:THREE.DoubleSide,uniforms:U({}),
-    vertexShader:GL+`attribute vec3 aCol;varying vec3 vW,vC;varying vec2 vUv;
-    void main(){vec4 o=modelMatrix*instanceMatrix*vec4(0.,0.,0.,1.);float r=hash12(o.xz*13.7);vec4 w=modelMatrix*instanceMatrix*vec4(position,1.);
-      float f=1.3+r*.9;float sway=sin(uTime*f+r*40.)+.35*sin(uTime*f*2.3+r*17.);
-      w.xz+=(WD*(.06+.05*windF(o.xz)+.08*gustF(o.xz))+vec2(.7,-.25)*sway*.045)*.35;   // moves with the grass around it
-      vW=w.xyz;vC=aCol;vUv=uv;gl_Position=projectionMatrix*viewMatrix*w;}`,
-    fragmentShader:GL+`varying vec3 vW,vC;varying vec2 vUv;
-    void main(){clipW(vW);vec2 q=vUv-.5;float a=atan(q.y,q.x),r=length(q)*2.;if(r>.75+.25*cos(a*5.))discard;   // five soft petals
-      vec3 c=mix(vec3(.93,.74,.3),vC,smoothstep(.22,.34,r));c*=uAmb+uSunCol*.5;gl_FragColor=vec4(haze(c,vW,uHazeK),1.);}`}),N);
-  const M=new THREE.Matrix4(),Q=new THREE.Quaternion(),S=new THREE.Vector3(),P=new THREE.Vector3(),E=new THREE.Euler();let n=0,guard=0;
-  while(n<N&&guard<N*30){guard++;const d=3+Math.pow(Math.random(),1.3)*22,z=-d,x=(Math.random()*2-1)*(1.6+d*.66);
-    if(H(x,z)<waterY(d)+.12||inWater(x,z,.8)||Math.random()>sstep(.3,.75,vnoise(x*.12+3.,z*.12)))continue;   // loosely, more in some places than others
-    const k=Math.random()<.2?Math.floor(Math.random()*3):Math.floor(vnoise(x*.07,z*.07+9.)*7.)%3;   // a patch is mostly one colour
-    const s=(.04+Math.random()*.022)*(1+d*.025);P.set(x,H(x,z)+.16+Math.random()*.22,z);E.set(0,Math.random()*6.28,0);Q.setFromEuler(E);S.set(s,s,s);M.compose(P,Q,S);
-    im.setMatrixAt(n,M);cols.set(PAL[k],n*3);n++}
-  geo.setAttribute('aCol',new THREE.InstancedBufferAttribute(cols,3));im.count=n;im.frustumCulled=false;scene.add(im);flowerMesh=im;
+      const dd=-z,k=Math.random();h=(k<.6?.14+Math.random()*.14:k<.92?.28+Math.random()*.16:.44+Math.random()*.22)*(1-.35*sstep(10,50,dd))*.62*(.4+.6*sstep(2,10,dd))*(H(x,z)<waterY(-z)+.08?0:1);   // never standing in the water
+      const cr=sstep(.45,.95,Math.abs(x)/(.566*Math.max(-z,2)))*(1-sstep(6,22,-z));                                  // the corners: tall golden grass framing the view
+      lush=(1-sstep(.5,9,Math.abs(x-streamX(-z))-streamW(-z)/2))*(1-cr);h*=(.75+.5*vnoise(x*.3,z*.3))*(.8+1.9*cr)}   // clumps, greener by the water
+    P.set(x,Hb(x,z)-.04,z);E.set((Math.random()-.5)*.22,Math.random()*Math.PI*2,lean||(Math.random()-.5)*.22,lean?'ZYX':'XYZ');Q.setFromEuler(E);
+    S.set(.9+Math.random()*.7,h,1);M.compose(P,Q,S);if(i<NB){bankIm.setMatrixAt(i,M);LB[i]=lush}else{im.setMatrixAt(i-NB,M);LUSH[i-NB]=lush}}
+  g.setAttribute('aLush',new THREE.InstancedBufferAttribute(LUSH,1));gB.setAttribute('aLush',new THREE.InstancedBufferAttribute(LB,1));
+  im.frustumCulled=false;scene.add(im);grassMesh=im;bankIm.frustumCulled=false;scene.add(bankIm);
+  // roots and dark tangles where the bank meets the water
+  {const gR=new THREE.BufferGeometry();gR.setAttribute('position',g.attributes.position);gR.setAttribute('uv',g.attributes.uv);gR.setIndex(g.index);
+    const NR=PHONE?300:650,rim=new THREE.InstancedMesh(gR,new THREE.ShaderMaterial({side:THREE.DoubleSide,uniforms:U({}),
+      vertexShader:`varying vec3 vW;varying float vT;void main(){vec4 w=modelMatrix*instanceMatrix*vec4(position,1.);vW=w.xyz;vT=uv.y;gl_Position=projectionMatrix*viewMatrix*w;}`,
+      fragmentShader:GL+`varying vec3 vW;varying float vT;void main(){clipW(vW);vec3 c=vec3(.16,.12,.08)*(1.+.3*vT)*(uAmb+uSunCol*.3);gl_FragColor=vec4(haze(c,vW,uHazeK),1.);}`}),NR);
+    let n=0,guard=0;
+    while(n<NR&&guard<NR*20){guard++;const d=3+Math.pow(Math.random(),1.4)*55,side=Math.random()<.5?-1:1;if(vnoise(d*.25,side*3.)<.45)continue;
+      const x=edgeX(d,side)+side*(Math.random()*.35-.1),z=-d;
+      P.set(x,Hb(x,z)+.02,z);E.set((Math.random()-.5)*.3,Math.random()*Math.PI*2,(1.+Math.random()*.4)*side,'ZYX');Q.setFromEuler(E);
+      S.set(1.5+Math.random()*1.5,.25+Math.random()*.3,1);M.compose(P,Q,S);rim.setMatrixAt(n++,M)}
+    rim.count=n;rim.frustumCulled=false;scene.add(rim)}
 }
 
 /* ---------------- birds far off, fireflies at night ---------------- */
@@ -433,7 +452,7 @@ const ffU=U({uDpr:{value:1}});
 const composer=new EffectComposer(renderer);
 renderer.domElement.addEventListener('webglcontextlost',e=>{e.preventDefault();const l=$('#s3msg');l.textContent='This scene needs more graphics power than this device has right now. Try reloading.';l.hidden=false});
 composer.addPass(new RenderPass(scene,camera));
-const bloom=new UnrealBloomPass(new THREE.Vector2(256,256),.25,.7,.72);composer.addPass(bloom);
+const bloom=new UnrealBloomPass(new THREE.Vector2(256,256),.25,.4,.9);composer.addPass(bloom);
 composer.addPass(new OutputPass());
 const finish=new ShaderPass({uniforms:{tDiffuse:{value:null},uRes:{value:new THREE.Vector2(1,1)},uDpr:{value:1},uFrame:{value:1},uSat:{value:1.04},uPage:{value:new THREE.Vector3(.984,.98,.969)}},
   vertexShader:`varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,
@@ -453,9 +472,9 @@ const PRESETS={
     base:'#30591b',mid:'#5c962c',tip:'#cadd6c',straw:'#dcc878',g1:'#5a8f2e',g2:'#7fa63c',g3:'#a3aa4c',st:'#d2b66c',dark:'#4a6332',sheen:'#f4f6c0',water:'#2a4238',bed:'#8d8258',
     lit:'#5f9440',tdark:'#24462a',bark:'#4a3b2e',mk:.00017,m0:'#93aab0',m1:'#93afcb',m2:'#56708a',bird:'#3a4652',night:0,bloom:.1,
     cap:['The stream, early afternoon','Sun out over the valley · the water running low and clear','WIND 9 KM/H W · 22 °C · CLOUD 25%']},
-  golden:{el:6,az:-11,top:'#6a92c6',hor:'#f1cfa0',sun:'#f9b66c',amb:'#b9a99a',haze:'#e9d3b5',hk:.00025,cover:.32,cLit:'#f7e1c4',cShade:'#a198a3',
+  golden:{el:4.5,az:0,top:'#76689c',hor:'#f3a462',sun:'#ffae5c',amb:'#ab979a',haze:'#eeb48c',hk:.00028,cover:.34,cLit:'#ffb488',cShade:'#a27e98',
     base:'#2a4416',mid:'#557a22',tip:'#d8c45c',straw:'#e3c272',g1:'#6b8a34',g2:'#8a9a3e',g3:'#a6a248',st:'#cfa95c',dark:'#3a4a28',sheen:'#ffe6a6',water:'#2e3029',bed:'#7a6a4c',
-    lit:'#6b7d38',tdark:'#2a3a22',bark:'#3f3127',mk:.00019,m0:'#c79f86',m1:'#b3a4ad',m2:'#5e5466',bird:'#4a3f3a',night:0,bloom:.24,
+    lit:'#4e5e2c',tdark:'#1f2b1a',bark:'#3f3127',mk:.00019,m0:'#b48aa0',m1:'#a58aa8',m2:'#6f5a80',bird:'#4a3f3a',night:0,bloom:.32,
     cap:['The stream, golden hour','The sun low over the hills · the water turning gold','WIND 5 KM/H SW · 18 °C · CLOUD 20%']},
   night:{el:22,az:18,top:'#07122a',hor:'#203a63',sun:'#bccdf5',amb:'#31435f',haze:'#1d3256',hk:.00036,cover:.38,cLit:'#55688f',cShade:'#1b2847',
     base:'#0f2224',mid:'#1f3d3e',tip:'#5f8486',straw:'#61706a',g1:'#1d3a3c',g2:'#244444',g3:'#2a4a48',st:'#34504a',dark:'#101f26',sheen:'#7d9cb4',water:'#08131f',bed:'#1d2630',
@@ -471,7 +490,7 @@ function applyState(){
   const el=cur.el*Math.PI/180,az=cur.az*Math.PI/180;sunDir.set(Math.sin(az)*Math.cos(el),Math.sin(el),-Math.cos(az)*Math.cos(el));
   env.uSunDir.value.copy(sunDir);env.uSunCol.value.copy(cur.sun);env.uHaze.value.copy(cur.haze);env.uHazeK.value=cur.hk;env.uNight.value=cur.night;env.uAmb.value.copy(cur.amb);
   skyU.uTop.value.copy(cur.top);skyU.uHor.value.copy(cur.hor);skyU.uCLit.value.copy(cur.cLit);skyU.uCShade.value.copy(cur.cShade);skyU.uCover.value=cur.cover;
-  fieldU.uG1.value.copy(cur.g1);fieldU.uG2.value.copy(cur.g2);fieldU.uG3.value.copy(cur.g3);fieldU.uStraw.value.copy(cur.st);fieldU.uDark.value.copy(cur.dark);fieldU.uSheen.value.copy(cur.sheen);
+  fieldU.uG1.value.copy(cur.g1);fieldU.uG2.value.copy(cur.g2);fieldU.uG3.value.copy(cur.g3);fieldU.uStraw.value.copy(cur.st);fieldU.uDark.value.copy(cur.dark);fieldU.uSheen.value.copy(cur.sheen);fieldU.uGB.value.copy(cur.base);fieldU.uGM.value.copy(cur.mid);
   grassU.uBase.value.copy(cur.base);grassU.uMid.value.copy(cur.mid);grassU.uTip.value.copy(cur.tip);grassU.uStraw.value.copy(cur.straw);
   treeU.uLit.value.copy(cur.lit);treeU.uDark.value.copy(cur.tdark);treeU.uBark.value.copy(cur.bark);
   waterU.uDeep.value.copy(cur.water);waterU.uBed.value.copy(cur.bed);mtnU.uRock.value.copy(cur.m0);mtnU.uShadow.value.copy(cur.m2);mtnU.uK.value=cur.mk;
@@ -501,7 +520,7 @@ setTime('golden');Object.assign(cur,asState(PRESETS.golden));   // golden hour o
 function loop(){if(document.body.dataset.scene!=='stream'||document.hidden){clock.getDelta();requestAnimationFrame(loop);return}   // only draw while the stream is showing
   const dt=Math.min(clock.getDelta(),.1);t+=dt;env.uTime.value=reduced?t*.4:t;
   lerpState(1-Math.exp(-dt*1.5));applyState();
-  camera.position.set(EYE.x,EYE.y,EYE.z);camera.lookAt(0,EYE.y-9.5,-100);sky.position.copy(camera.position);
+  camera.position.set(EYE.x,EYE.y,EYE.z);camera.lookAt(0,EYE.y-7,-100);sky.position.copy(camera.position);
   flockT-=dt;if(!flockOn&&flockT<=0&&cur.night<.5)launchFlock();
   if(flockOn){let any=false;for(const b of birds){b.b.position.x+=7.5*dt;b.b.position.y+=Math.sin(t*.7+b.ph)*.006;if(b.b.position.x<75)any=true;
       const glide=Math.sin(t*.5+b.ph)>.35;const fl=glide?.12:Math.sin(t*6.5+b.ph)*.55;b.l.rotation.z=fl;b.r.rotation.z=-fl}
