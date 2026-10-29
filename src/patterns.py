@@ -21,10 +21,6 @@ rep("let state=load();",
     "function markDemo(){let n=0;for(const e of state.entries)if(e&&!e.demo&&DEMO_TEXT.has(e.body)){e.demo=true;n++}if(n)persist()}\n"
     "const demoCount=()=>state.entries.filter(e=>e&&e.demo).length;\n"
     "markDemo();")
-rep("for(const e of state.entries){if(!e||typeof e.at!=='number')continue;k.add(dayKey(e.at));",
-    "for(const e of state.entries){if(!e||e.demo||typeof e.at!=='number')continue;k.add(dayKey(e.at));")   # demo never counts as days journaled
-rep("seg('sim',[['null','Real ('+realDays()+')'],",
-    "seg('sim',[['null','Real ('+realDays()+(demoCount()?', demo not counted':'')+')'],")
 rep('<button type="button" id="devDemo">Load demo memories</button>',
     '<button type="button" id="devDemo">Load demo memories</button>${demoCount()?\'<button type="button" id="devDemoOff">Remove demo memories (\'+demoCount()+\')</button>\':\'\'}')
 rep("$('#devDemo').addEventListener('click',()=>{loadDemo();renderDev();updateDock();if(page)openPage(page)});",

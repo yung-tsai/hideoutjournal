@@ -23,3 +23,6 @@ body[data-idle] #devChip{opacity:0;pointer-events:none}
 #stagefx{position:absolute;inset:0;pointer-events:none}
 #stagefx #glowfx{position:absolute;mix-blend-mode:screen;opacity:0;image-rendering:pixelated}
 #artvig{position:absolute;opacity:0}
+
+/* the van's paint and gear were removed (IDEAS.md, tag van-upgrades-v1): its Settings section goes with them */
+.sgroup:has(#custBtn){display:none}

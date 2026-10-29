@@ -107,7 +107,6 @@ _sq='data:image/png;base64,'+_sb.b64encode(open(A+'sq/atlas_opt.png','rb').read(
 for _k in ('sunset','day','night','sunrise'):_S[_k]['squirrel']=[898,319,.5,776,816,887]   # home, ground, scale, nearest/farthest stop, trunk edge
 scene = rep(scene, '/*@@SETS@@*/', 'const SETS = '+_js.dumps(_S)+';')
 scene = rep(scene, '/*@@SQIMG@@*/', _sq)
-scene = rep(scene, '/*@@VANASSETS@@*/null', open(A+'up/vanassets.json').read())
 import json as _j
 sky = open(A+'clouds/skyassets.json').read()
 scene = rep(scene, '/*@@SKY@@*/', 'const SKY=' + sky + ';')
@@ -225,7 +224,6 @@ subprocess.run(['python3',HERE+'journal.py',OUT,OUT],check=True)
 subprocess.run(['python3',HERE+'burn.py',OUT,OUT],check=True)
 subprocess.run(['python3',HERE+'bundle.py',OUT,OUT],check=True)
 subprocess.run(['python3',HERE+'sound.py',OUT,OUT],check=True)
-subprocess.run(['python3',HERE+'van.py',OUT,OUT],check=True)
 subprocess.run(['python3',HERE+'safety.py',OUT,OUT],check=True)
 subprocess.run(['python3',HERE+'patterns.py',OUT,OUT],check=True)
 subprocess.run(['python3',HERE+'field.py',OUT,OUT],check=True)

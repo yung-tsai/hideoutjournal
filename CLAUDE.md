@@ -19,7 +19,7 @@ python3 build.py              # → index.html (~12.8 MB, all art and sound inli
 
 `build.py` runs `src/assemble.py`, which writes `build/fragment.html` and then runs each pass over it, in this order:
 
-theme → journal → burn → bundle → sound → van → safety → patterns → field → write → card → voice → tasks → stream3d → postcard → meadow → waterfall → desert
+theme → journal → burn → bundle → sound → safety → patterns → field → write → card → voice → tasks → stream3d → postcard → meadow → waterfall → desert
 
 - `assemble.py` combines the base app (`assets/talio-home-v6-3d.html`, the older UI) with the 2D scene engine (`src/scene2d.js`) and inlines the art.
 - Each pass is a Python script `python3 src/<pass>.py in out` that patches the HTML with `rep(a, b, n=1)`. `rep` **asserts the exact number of matches** and exits on a mismatch, so an earlier pass changing a string breaks a later pass loudly. That's on purpose. When you change a pass, keep later passes' anchors intact, or update them.
@@ -68,7 +68,7 @@ theme → journal → burn → bundle → sound → van → safety → patterns 
 
 - As a postcard (`src/postcard.py`): the card keeps the art's 16:9 (952×536), centred between header and field; whole device pixels per art pixel when that costs ≤20% of the room, else the exact fit, always nearest-neighbour. `place()`/`extRest()`/`inRest()` fit the camp to `#stage` (the card) instead of the window, so the van pan/zoom and the van's inside stay in the card. The deckled edge is a `.pcEdge` canvas over the card (same recipe as the stream's). The burn scene uses the card on wider screens and stays full screen on phones (too small there). The caption comes from `PC_CAP` by `ST.time`.
 
-- `src/scene2d.js` is the canvas engine: time of day, water, fire, birds, fish, stars, the squirrel (`drawSquirrel`), ferns (`drawFerns`), and the `Van` module (paint ramps and upgrade layers).
+- `src/scene2d.js` is the canvas engine: time of day, water, fire, birds, fish, stars, the squirrel (`drawSquirrel`), ferns (`drawFerns`). `Van` is now a no-op stub (the van is part of the painting).
 - Writing in the van and the van's looks only apply to the camp; they're hidden while the stream shows.
 - `tools/asset-scripts/` holds the one-off scripts that made the van, fern and squirrel assets. Reference only; they need original images that aren't in the repo.
 
@@ -89,12 +89,12 @@ theme → journal → burn → bundle → sound → van → safety → patterns 
 - Finish row: mic, then a split button `Save ▾` whose menu has "Reflect on it" and "Burn it". Tapping outside the card folds it back into the field (the draft is kept).
 - Save catches tasks on the device (a regex in tasks.py, written for unpunctuated speech) and lists them under "Added to Tasks", each with ✕ to undo.
 - Live voice uses the browser's SpeechRecognition (Chrome, Edge, Safari; not Firefox). Sessions auto-restart with a watchdog; if the browser won't restart, it says "Paused. Tap to keep listening".
-- Van (camp scene): two-tone paint, canoe, roof box, ladder and spare tire, unlocked by days journaled. Demo entries never count.
+- Van upgrades (paint, canoe, roof box, ladder, spare tire) were removed; the camp keeps the basic van from the painting. See IDEAS.md; restore from tag `van-upgrades-v1`.
 - Data safety: "Erase all journal data" takes two taps and keeps a rescue copy. Never add a destructive action without a confirm.
 
 ## Before other people use it
 
-- `src/van.py` has `const VAN_TEST_ALL=true;`, which unlocks every van upgrade for testing. **Set it to false** before sharing the app.
+- (`VAN_TEST_ALL` is gone with the van upgrades.)
 - The logo is upscaled from a tiny image and looks soft; replace `assets/logo/hideout_logo.png` with a 1024px+ transparent version when there is one.
 
 ## Backlog (rough priority)

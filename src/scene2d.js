@@ -235,57 +235,8 @@ function drawSquirrel(t,still,night){
   sqDraw(fr,q.x,gy,sc,flip,SQTINT[sceneMode],G[5]);   // the trunk hides it as it comes and goes
 }
 
-/* ==========================================================================
-   Your van: two-tone paint and add-ons, painted into the camp picture itself.
-   Paint keeps the painting's own shading: each colour becomes a seven-step
-   ramp (cooler in shadow, warmer in light), and every pixel takes the light
-   that fell on the original silver van in that scene. Add-ons were cut from
-   painted edits of the scene, one layer per time of day.
-   ========================================================================== */
-const VANA=/*@@VANASSETS@@*/null;
-const Van=(()=>{
-  const TOP='#e8e4d8',SMAX=.42;
-  let look={paint:null,roof:'none',tire:false,ladder:false},mask=null,light={},layers={},ready=false,onReady=[];
-  const pix=src=>new Promise(r=>{const i=new Image();i.onload=()=>r(i);i.onerror=()=>r(null);i.src=src});
-  const data=im=>{const c=document.createElement('canvas');c.width=im.width;c.height=im.height;const x=c.getContext('2d');x.drawImage(im,0,0);return x.getImageData(0,0,im.width,im.height).data};
-  if(VANA){const jobs=[pix(VANA.mask).then(i=>{if(i)mask=data(i)})];
-    for(const T in VANA.light)jobs.push(pix(VANA.light[T]).then(i=>{if(i)light[T]=data(i)}));
-    for(const k in VANA.layers){layers[k]={};for(const T in VANA.layers[k])jobs.push(pix(VANA.layers[k][T]).then(i=>{layers[k][T]=i}))}
-    Promise.all(jobs).then(()=>{ready=!!mask;onReady.splice(0).forEach(f=>f())})}
-  function hls(r,g,b){const mx=Math.max(r,g,b),mn=Math.min(r,g,b),l=(mx+mn)/2;if(mx===mn)return[0,l,0];
-    const d=mx-mn,s=l<=.5?d/(mx+mn):d/(2-mx-mn);let h;
-    if(mx===r)h=(g-b)/d+(g<b?6:0);else if(mx===g)h=(b-r)/d+2;else h=(r-g)/d+4;return[h/6,l,s]}
-  function rgb(h,l,s){if(!s)return[l,l,l];const q=l<.5?l*(1+s):l+s-l*s,p=2*l-q;
-    const f=t=>{t=(t%1+1)%1;return t<1/6?p+(q-p)*6*t:t<.5?q:t<2/3?p+(q-p)*(2/3-t)*6:p};return[f(h+1/3),f(h),f(h-1/3)]}
-  function ramp(hex){const n=parseInt(hex.slice(1),16);let[h,l,s]=hls((n>>16&255)/255,(n>>8&255)/255,(n&255)/255);
-    s=Math.min(s,SMAX);l=Math.min(Math.max(l,.24),.80);const H=h*360,out=[];
-    for(let i=0;i<7;i++){const t=i/6,hh=((H+(1-t)*(H<215?-10:8)+t*6*((H<60||H>300)?1:0))%360+360)%360,
-      ll=Math.min(.95,Math.max(.05,l-.30+t*.56)),ss=Math.min(.6,s*(.70+.45*Math.sin(t*Math.PI)));out.push(rgb(hh/360,ll,ss))}
-    return out}
-  const CAMP={sunrise:1,day:1,sunset:1,night:1};
-  function dress(which,base){
-    if(!VANA||!CAMP[which])return base;
-    if(!ready){onReady.push(()=>{if(A&&sceneMode===which&&A.raw===base){A.base=dress(which,base);drawNow()}});return base}
-    const c=document.createElement('canvas');c.width=base.width;c.height=base.height;const x=c.getContext('2d');x.drawImage(base,0,0);
-    const{x:X,y:Y,w:W,h:H}=VANA;
-    if(look.paint){const id=x.getImageData(X,Y,W,H),d=id.data,lo=ramp(look.paint),up=ramp(TOP),Lt=light[which],ds=VANA.desat[which]||0;
-      for(let i=0;i<W*H;i++){const reg=mask[i*4];if(reg<60)continue;
-        const t=Math.min(6,Math.round(mask[i*4+1]/40)),c0=(reg>180?lo:up)[t];let r=c0[0],g=c0[1],b=c0[2];
-        if(Lt){r*=Lt[i*4]/100;g*=Lt[i*4+1]/100;b*=Lt[i*4+2]/100}
-        if(ds){const gr=r*.299+g*.587+b*.114;r+=(gr-r)*ds;g+=(gr-g)*ds;b+=(gr-b)*ds}
-        d[i*4]=Math.min(255,r*255);d[i*4+1]=Math.min(255,g*255);d[i*4+2]=Math.min(255,b*255)}
-      x.putImageData(id,X,Y)}
-    const put=k=>{const im=layers[k]&&layers[k][which];if(im)x.drawImage(im,VANA.pos[k][0],VANA.pos[k][1])};
-    if(look.roof==='canoe')put('canoe');else if(look.roof==='roofbox')put('roofbox');
-    // dark metal reads on light and mid paint; on a dark van the ladder goes back to bare aluminium
-    if(look.ladder){const r=look.paint&&ramp(look.paint)[4],dark=r&&(r[0]*.299+r[1]*.587+r[2]*.114)<.40;put(dark?'ladder':'ladderDark')}
-    if(look.tire)put('tire');
-    return c}
-  function set(next){look={...look,...next};if(A&&A.raw){A.base=dress(sceneMode,A.raw);drawNow()}}
-  // a close crop of the van as it stands right now, for the Your van screen
-  function preview(cv,pad=10){if(!A||!VANA)return;const k=cv.getContext('2d'),X=VANA.x-pad,Y=VANA.y-pad,W=VANA.w+pad*2,H=VANA.h+pad*2;
-    k.imageSmoothingEnabled=false;k.clearRect(0,0,cv.width,cv.height);k.drawImage(A.base,X,Y,W,H,0,0,cv.width,cv.height)}
-  return{set,dress,preview,look:()=>({...look}),ramp,whenReady:f=>ready?f():onReady.push(f)}})();
+/* The van is part of the painting. (Its paint and add-ons were removed; see IDEAS.md and the tag van-upgrades-v1.) */
+const Van={dress:(which,base)=>base,set(){},whenReady:f=>f()};
 
 /* ---------- loading a time of day (crossfades from the last frame) ---------- */
 const fadeCv=document.createElement('canvas');fadeCv.width=NW;fadeCv.height=NH;let fctx=fadeCv.getContext('2d');
