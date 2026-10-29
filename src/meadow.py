@@ -32,7 +32,7 @@ rep("(body.dataset.scene==='stream'&&!tr&&mode==='out')", "(body.dataset.scene!=
 rep("const inVan=state.settings.writeWhere==='van'&&document.body.dataset.scene!=='stream';", "const inVan=state.settings.writeWhere==='van'&&document.body.dataset.scene==='camp';")
 
 # ---------- the postcard layout and caption are shared with the camp ----------
-rep("const c=PRESETS[k].cap,T=$('#s3capTitle');if(T){", "const c=PRESETS[k].cap,T=$('#s3capTitle');if(T&&document.body.dataset.scene==='stream'){")   # the stream writes its caption only while it shows
+if "const c=PRESETS[k].cap,T=$('#s3capTitle');if(T){" in s: rep("const c=PRESETS[k].cap,T=$('#s3capTitle');if(T){", "const c=PRESETS[k].cap,T=$('#s3capTitle');if(T&&document.body.dataset.scene==='stream'){")   # the stream writes its caption only while it shows
 rep("function pcOn(){return document.body.dataset.scene==='camp'&&document.body.dataset.frame==='postcard'}",
     "function pcOn(){return document.body.dataset.scene!=='stream'&&document.body.dataset.frame==='postcard'}")
 rep("function pcCaption(){if(document.body.dataset.scene!=='camp')return;",

@@ -1,6 +1,6 @@
 # Hideout Journal
 
-A calm journaling web app. The default backdrop is **the meadow**: a pixel-art golden-hour meadow with snowy peaks, gently animated, shown as a postcard on a white page. The early-90s Amiga-style pixel-art river camp with a retro van and **the stream** (a 3D golden-hour valley, three.js) are the other choices in Settings > Scene. You write (or talk), save the entry, and it shows up in Journal (formerly Memories), Patterns (mood over time) and Tasks. Everything runs in the browser; entries live in localStorage under `talio-home-v1` (the old working name was Talio). There is no backend yet.
+A calm journaling web app. The default backdrop is **the meadow**: a pixel-art golden-hour meadow with snowy peaks, gently animated, shown as a postcard on a white page. The early-90s Amiga-style pixel-art river camp with a retro van and **the waterfall** are the other choices in Settings > Scene. (**The stream**, a 3D three.js valley, was taken out of the list; its code is kept, switched off by `STREAM = False` in `src/stream3d.py`, so three.js isn't downloaded.) You write (or talk), save the entry, and it shows up in Journal (formerly Memories), Patterns (mood over time) and Tasks. Everything runs in the browser; entries live in localStorage under `talio-home-v1` (the old working name was Talio). There is no backend yet.
 
 The owner is Kyoto88. They are a designer, not an engineer: explain choices in plain words, show screenshots of visual changes, and ask before big design decisions. **Ask permission before implementing, writing code, or doing work that uses credits; answer questions without starting to build.** They like a minimal, icon-led, calm UI.
 
@@ -36,12 +36,15 @@ theme → journal → burn → bundle → sound → van → safety → patterns 
 
 ### The waterfall (2D)
 
-- The fourth choice in Settings > Scene (`body[data-scene]="waterfall"`), morning only. `src/waterfall.py` adds it the same way as the meadow (postcard layout, caption `WATERFALL_CAP`, burn in the card on wider screens, starts on first show via `startWaterfall()`). Dev hook: `__waterfall.t(seconds)`.
+- The third choice in Settings > Scene (`body[data-scene]="waterfall"`), morning only. `src/waterfall.py` adds it the same way as the meadow (postcard layout, caption `WATERFALL_CAP`, burn in the card on wider screens, starts on first show via `startWaterfall()`). Dev hook: `__waterfall.t(seconds)`.
 - `src/waterfall.js` is generated from `prototypes/waterfall/` (master.png, clean.png, `prep.py` then `build.py 6`, which writes `waterfall.js`; copy it to `src/` and build). Each step of the test page is kept there as step1–6.html.
 - What moves: the ferns sway (the five rocks are a separate still layer, outlined by hand in `prep.py`'s `ROCKS`, their hidden parts filled with matching rock); both falls flow by colour cycling, only on water pixels, held steady at the lip; hard foam churns at the base with patches drifting outward; mist rises against the cliff; rings spread from the base; reflections wobble side to side (each row only borrows water from itself), strong near the fall and calm in front; the streak shimmers; a few glints; a fish jumps about once a minute or two.
-- It adds about 4.8 MB (the page is ~25 MB).
+- It adds about 4.8 MB (the page is ~22 MB without the stream).
 
-### The stream (3D)
+### The stream (3D, switched off)
+
+- Not offered any more (Kyoto88's call). `STREAM = False` in `src/stream3d.py` leaves its module and three.js off the page; the rest of that pass (header, logo, light postcard UI, Settings) is still in use by every scene. To bring it back: set `STREAM = True` and add its button back in `src/waterfall.py`.
+
 
 - `src/stream3d.js` is the three.js scene module. `src/stream3d.py` (the last pass) injects it with an import map (three@0.160.0 from jsDelivr) and adds: Settings > Scene (The stream / River camp), the Postcard frame switch, the light UI over the postcard, the logo (`assets/logo/hideout_logo.png`), the plain on/off volume icon, the header layout, and the Memories → Journal rename. `body[data-scene]` (stream|camp) and `body[data-frame]` (postcard|full) drive it. The 2D camp stops drawing while the stream shows.
 - The scene was designed in the standalone page `prototypes/stream.html` (it has its own simple UI and runs on its own). To change the scene, edit that page, check it, then regenerate the module with `tools/make_stream_module.py` (fix its paths first; it was written for the original workspace). Or edit `src/stream3d.js` directly.
@@ -71,7 +74,7 @@ theme → journal → burn → bundle → sound → van → safety → patterns 
 
 ## Decisions already made (don't undo without asking)
 
-- The meadow is the default scene (Settings > Scene: The meadow, River camp, The stream, The waterfall). The stream is golden hour only for now, its composition following Kyoto88's reference (see the Composition note above).
+- The meadow is the default scene (Settings > Scene: The meadow, River camp, The waterfall). The stream was removed from the list; anyone who had it saved gets the meadow. The stream is golden hour only for now, its composition following Kyoto88's reference (see the Composition note above).
 - Both scenes show as a postcard on the light page by default: deckled edge, caption under it, header above, journal field below; on that page the header and field never rest away when idle. The Postcard switch off gives the old full-screen look (the camp's dark glass UI that rests when idle).
 - Header: the logo top left; one menu in the middle (Journal, Tasks, Settings); the volume icon (on/off) far right. Logo colours: both words red, trees green, river blue.
 - Writing happens in place: the bottom field expands into the journal card.

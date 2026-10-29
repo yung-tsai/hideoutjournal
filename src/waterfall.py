@@ -1,4 +1,5 @@
-"""The waterfall: a pixel-art morning waterfall into a forest pool, the fourth choice in Settings > Scene (after the meadow, the camp and the stream).
+"""The waterfall: a pixel-art morning waterfall into a forest pool, the third choice in Settings > Scene (after the meadow and the camp).
+   It also takes The stream out of the list (its 3D module is switched off in stream3d.py).
    - body[data-scene] gains 'waterfall'. It's shown like the meadow: a 16:9 postcard on the light page (postcard.py's layout, deckled
      edge, its own caption), or full screen with the Postcard switch off; the burn opens in its card on wider screens.
    - The scene is src/waterfall.js (made by prototypes/waterfall/build.py). It starts the first time it shows and only draws while showing.
@@ -17,8 +18,8 @@ def rep(a, b, n=1):
 rep('<div id="meadow" aria-hidden="true">', '<div id="waterfall" aria-hidden="true"><canvas id="waterfallCv" width="952" height="536" role="img" aria-label="Pixel-art waterfall falling into a forest pool in the morning, ferns swaying in front"></canvas><canvas class="pcEdge" aria-hidden="true"></canvas></div>\n<div id="meadow" aria-hidden="true">')
 
 # ---------- Settings: a fourth scene ----------
-rep('<button type="button" data-v="stream">The stream</button></div>', '<button type="button" data-v="stream">The stream</button><button type="button" data-v="waterfall">The waterfall</button></div>')
-rep("return v==='camp'||v==='stream'?v:'meadow'}", "return v==='camp'||v==='stream'||v==='waterfall'?v:'meadow'}")
+rep('<button type="button" data-v="stream">The stream</button></div>', '<button type="button" data-v="waterfall">The waterfall</button></div>')
+rep("return v==='camp'||v==='stream'?v:'meadow'}", "return v==='camp'||v==='waterfall'?v:'meadow'}")   # the stream is no longer offered: anyone who had it gets the meadow
 rep("if(body.dataset.scene==='meadow')startMeadow();", "if(body.dataset.scene==='meadow')startMeadow();if(body.dataset.scene==='waterfall')startWaterfall();")
 
 # ---------- caption ----------

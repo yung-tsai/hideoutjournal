@@ -109,9 +109,11 @@ body[data-frame="postcard"] .switch:not([aria-checked="true"]){background:#d9ddd
 </style>""")
 
 # ---------- three.js and the scene module ----------
+# The stream was taken out of Settings > Scene, so its 3D module isn't loaded (no three.js download). Set STREAM = True to bring it back.
+STREAM = False
 mod = open(HERE + 'stream3d.js').read()
 s = s.rstrip()
-s += ('\n<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",'
+if STREAM: s += ('\n<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",'
       '"three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>\n'
       '<script type="module">\n' + mod + '\n</script>\n')
 open(dst, 'w').write(s)
