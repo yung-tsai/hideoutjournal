@@ -19,11 +19,11 @@ python3 build.py              # → index.html (~12.8 MB, all art and sound inli
 
 `build.py` runs `src/assemble.py`, which writes `build/fragment.html` and then runs each pass over it, in this order:
 
-theme → journal → burn → bundle → sound → van → safety → patterns → field → write → card → voice → tasks → stream3d → postcard → meadow → waterfall
+theme → journal → burn → bundle → sound → van → safety → patterns → field → write → card → voice → tasks → stream3d → postcard → meadow → waterfall → desert
 
 - `assemble.py` combines the base app (`assets/talio-home-v6-3d.html`, the older UI) with the 2D scene engine (`src/scene2d.js`) and inlines the art.
 - Each pass is a Python script `python3 src/<pass>.py in out` that patches the HTML with `rep(a, b, n=1)`. `rep` **asserts the exact number of matches** and exits on a mismatch, so an earlier pass changing a string breaks a later pass loudly. That's on purpose. When you change a pass, keep later passes' anchors intact, or update them.
-- Later passes patch the output of earlier ones, so the newest behaviour of a feature is often in a later file (the writing card: write.py then card.py; voice: voice.py replaces LiveTranscriber; the stream: stream3d.py; the camp's postcard layout: postcard.py; the meadow: meadow.py; the waterfall: waterfall.py, which is last).
+- Later passes patch the output of earlier ones, so the newest behaviour of a feature is often in a later file (the writing card: write.py then card.py; voice: voice.py replaces LiveTranscriber; the stream: stream3d.py; the camp's postcard layout: postcard.py; the meadow: meadow.py; the waterfall: waterfall.py; the desert: desert.py, which is last).
 - New work: edit the pass that owns the feature, or add a new pass at the end of the list in `assemble.py`. Keep the docstring at the top of each pass describing what it changes and why.
 
 ### The meadow (2D, default)
@@ -40,6 +40,13 @@ theme → journal → burn → bundle → sound → van → safety → patterns 
 - `src/waterfall.js` is generated from `prototypes/waterfall/` (master.png, clean.png, `prep.py` then `build.py 6`, which writes `waterfall.js`; copy it to `src/` and build). Each step of the test page is kept there as step1–6.html.
 - What moves: the ferns sway (the five rocks are a separate still layer, outlined by hand in `prep.py`'s `ROCKS`, their hidden parts filled with matching rock); both falls flow by colour cycling, only on water pixels, held steady at the lip; hard foam churns at the base with patches drifting outward; mist rises against the cliff; rings spread from the base; reflections wobble side to side (each row only borrows water from itself), strong near the fall and calm in front; the streak shimmers; a few glints; a fish jumps about once a minute or two.
 - It adds about 4.8 MB (the page is ~22 MB without the stream).
+
+### The desert (2D)
+
+- The fourth choice in Settings > Scene (`body[data-scene]="desert"`), sunset only. `src/desert.py` adds it like the waterfall (postcard layout, caption `DESERT_CAP`, burn in the card on wider screens, `startDesert()`). Dev hook: `__desert.t(seconds)`, `__desert.tumbleweed()`.
+- `src/desert.js` is generated from `prototypes/desert/` (master.png, clean.png, `prep.py` then `build.py`; copy `desert.js` to `src/` and build). The test page there has the sky saturation sliders and a TEST tumbleweed button; the app uses the sliders' starting values (blue 30%, orange 25%, clouds 25% less saturated) via `API.sky()`.
+- What moves: anchored sway (the ocotillo, the hero; foreground tufts; agaves barely; flowers and midground clumps a little; low tufts in the open patch); clouds drifting behind the saguaro, windmill and peaks; a drawn 14-blade windmill fan turning slowly; the alpenglow fading toward shadow over about 3 minutes, then back; an occasional bird; a tumbleweed every 3–5 minutes. Gusts were tried and removed (they read as paper rolling).
+- It adds about 10 MB (the page is ~32 MB): its sway layers carry their own weight maps. Worth slimming before more scenes go in.
 
 ### The stream (3D, switched off)
 
@@ -74,7 +81,7 @@ theme → journal → burn → bundle → sound → van → safety → patterns 
 
 ## Decisions already made (don't undo without asking)
 
-- The meadow is the default scene (Settings > Scene: The meadow, River camp, The waterfall). The stream was removed from the list; anyone who had it saved gets the meadow. The stream is golden hour only for now, its composition following Kyoto88's reference (see the Composition note above).
+- The meadow is the default scene (Settings > Scene: The meadow, River camp, The waterfall, The desert). The stream was removed from the list; anyone who had it saved gets the meadow. The stream is golden hour only for now, its composition following Kyoto88's reference (see the Composition note above).
 - Both scenes show as a postcard on the light page by default: deckled edge, caption under it, header above, journal field below; on that page the header and field never rest away when idle. The Postcard switch off gives the old full-screen look (the camp's dark glass UI that rests when idle).
 - Header: the logo top left; one menu in the middle (Journal, Tasks, Settings); the volume icon (on/off) far right. Logo colours: both words red, trees green, river blue.
 - Writing happens in place: the bottom field expands into the journal card.
