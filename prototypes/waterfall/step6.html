@@ -52,7 +52,7 @@ function mist(t){for(const m of MIST){const a=((t+m.ph)%14)/14,x=m.x0+m.dx*a+Mat
 /* ---------- glints and the fish ---------- */
 function glints(t){for(let i=0;i<GLINTS.length;i++){const [y,x]=GLINTS[i],h=hash(i*4.7),k=Math.max(0,Math.sin(t*(.6+h*.9)+h*30));if(k<.92)continue;
   px(g,x,y,'#f4fbff');if(k>.985){px(g,x-2,y,'#cfe6f2');px(g,x+2,y,'#cfe6f2');px(g,x,y-2,'#cfe6f2');px(g,x,y+2,'#cfe6f2')}}}
-const JUMPS=[];{let tt=18;for(let i=0;i<200;i++){JUMPS.push({s:tt,i});tt+=50+hash(i*2.3)*50}}   // the first after 18 s (for testing), then every 50-100 s
+const JUMPS=[];{let tt=55;for(let i=0;i<200;i++){JUMPS.push({s:tt,i});tt+=50+hash(i*2.3)*50}}   // the first after about a minute, then every 50-100 s
 function ring(x,y,a,col){const r=4+a*26,n=Math.round(8+r*.9);for(let k=0;k<n;k++){const an=k/n*6.283;if(hash(k*1.3+a*.0)>1-a*.6)continue;px(g,x+Math.cos(an)*r,y+Math.sin(an)*r*.28,col)}}
 function fish(t){for(const j of JUMPS){if(j.s>t)break;const a=t-j.s;if(a>3.4)continue;const [y0,x0]=FISH[j.i%FISH.length],dir=hash(j.i)>.5?1:-1;
   if(a<1){const x=x0+dir*a*30,y=y0-Math.sin(Math.PI*a)*26,c='#c9d6dc',d='#5f7480',up=a<.5;   // a small fish arcs out and back in
