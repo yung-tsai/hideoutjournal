@@ -27,8 +27,9 @@ if STEP >= 5: parts += [('pool', 16), ('streak', 12)]
 CY = 40; cmap = np.zeros((H - CY, W, 4), np.uint8); ramps = {}; order = []
 taken = np.zeros((H, W), bool)
 for ch, (k, n) in enumerate(parts):
-    m = K[k] & ~taken & ~sway; taken |= m
-    if k == 'pool': m &= ~K['streak']
+    m = K[k] & ~taken & ~sway
+    if k == 'pool': m &= ~K['streak']                                     # the streak under the fall has its own shimmer
+    taken |= m
     L = lum[m]; qs = np.quantile(L, np.linspace(0, 1, n + 1)); idx = np.clip(np.searchsorted(qs, L, 'right') - 1, 0, n - 1)
     ramps[k] = [B[m][idx == i].mean(0).round(1).tolist() for i in range(n)]; order.append(k)
     c = ch if ch < 4 else None
