@@ -645,7 +645,7 @@ body[data-scene="stream"] #scene3d{display:block}
 body[data-scene="stream"] #stage,body[data-scene="stream"] .vignette{display:none}
 body[data-scene="stream"][data-frame="postcard"] #scene3d{inset:auto;left:50%;top:var(--s3-top,84px);width:var(--s3-w,80vw);height:var(--s3-h,60vh);transform:translateX(-50%)}
 .s3cap{display:none;position:fixed;left:0;right:0;top:var(--s3cap-top,80%);z-index:1;text-align:center;pointer-events:none;padding:0 16px}
-body[data-scene="stream"][data-frame="postcard"] .s3cap{display:block}
+body[data-frame="postcard"] .s3cap{display:block}
 .s3cap b{display:block;font:500 15px/1.3 var(--ui);color:var(--ink)}
 .s3cap span{display:block;font:400 13.5px/1.45 var(--ui);color:var(--ink-2)}
 .s3cap code{display:block;margin-top:3px;font:400 11.5px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--ink-3);letter-spacing:.05em}
@@ -659,25 +659,36 @@ body[data-scene="stream"][data-frame="postcard"] .s3cap{display:block}
 body[data-scene="stream"] #place{display:none}
 body[data-scene="stream"] .sgroup:has(#custBtn),body[data-scene="stream"] p.sl:has(+#setWhere),body[data-scene="stream"] #setWhere,body[data-scene="stream"] #setWhere+.note{display:none}
 /* over the postcard: a light interface on a white page */
-body[data-scene="stream"][data-frame="postcard"]{background:#fbfaf7;
+body[data-frame="postcard"]{background:#fbfaf7;
   --ground:#fbfaf7;--paper:#ffffff;--paper-2:rgba(31,42,51,.05);--paper-3:rgba(31,42,51,.1);
   --glass:rgba(255,255,255,.94);--glass-strong:#ffffff;--field:rgba(31,42,51,.04);
   --ink:#1f2a33;--ink-2:#55616b;--ink-3:#8a949c;--line:rgba(31,42,51,.1);--line-2:rgba(31,42,51,.18);
   --olive:#3f8a3a;--olive-ink:#ffffff;--accent:#c4552f;--danger:#b8432e;
   --frost:#ffffff;--frost-line:rgba(31,42,51,.12);--frost-hi:#f1f2ee;
   --shadow:0 18px 50px rgba(31,42,51,.12);--shadow-s:0 4px 16px rgba(31,42,51,.07)}
-body[data-scene="stream"][data-frame="postcard"] .jfield{background:#fff;border:1px solid var(--line);color:var(--ink-2)}
-body[data-scene="stream"][data-frame="postcard"] .jfield:hover{background:#fff;color:var(--ink)}
-body[data-scene="stream"][data-frame="postcard"] .tnb,body[data-scene="stream"][data-frame="postcard"] .icon{-webkit-backdrop-filter:none;backdrop-filter:none}
+body[data-frame="postcard"] .jfield{background:#fff;border:1px solid var(--line);color:var(--ink-2)}
+body[data-frame="postcard"] .jfield:hover{background:#fff;color:var(--ink)}
+body[data-frame="postcard"] .tnb,body[data-frame="postcard"] .icon{-webkit-backdrop-filter:none;backdrop-filter:none}
 @media (max-width:760px){.brand h1.logo img{height:40px}}
-body[data-scene="stream"][data-frame="postcard"] .switch::after{background:#fff}
-body[data-scene="stream"][data-frame="postcard"] .switch:not([aria-checked="true"]){background:#d9ddd6}
+body[data-frame="postcard"] .switch::after{background:#fff}
+body[data-frame="postcard"] .switch:not([aria-checked="true"]){background:#d9ddd6}
+
+/* ---------- the river camp as a postcard ---------- */
+body[data-scene="camp"][data-frame="postcard"] #stage{inset:auto;left:var(--pc-left,50%);top:var(--pc-top,84px);width:var(--pc-w,952px);height:var(--pc-h,536px);background:var(--ground)}
+body[data-scene="camp"][data-frame="postcard"] .vignette{display:none}
+body[data-frame="postcard"] #place{display:none}
+body[data-scene="camp"][data-frame="postcard"] .s3cap{top:var(--pccap-top,80%)}
+@media (min-width:700px) and (min-height:560px){
+body[data-scene="camp"][data-frame="postcard"] .fire{inset:auto;left:var(--pc-left,50%);top:var(--pc-top,84px);width:var(--pc-w,952px);height:var(--pc-h,536px)}
+body[data-scene="camp"][data-frame="postcard"] .fire canvas.pcEdge{display:block}}
+#stage canvas.pcEdge,.fire canvas.pcEdge{position:absolute;inset:0;left:0;top:0;width:100%;height:100%;pointer-events:none;z-index:6;display:none;image-rendering:auto}
+body[data-scene="camp"][data-frame="postcard"] #stage canvas.pcEdge{display:block}
 </style>
 
 <div id="scene3d" aria-hidden="true"></div>
 <div class="s3cap" id="s3cap" aria-hidden="true"><b id="s3capTitle"></b><span id="s3capSub"></span><code id="s3capData"></code></div>
 <p class="s3msg" id="s3msg" role="status" hidden></p>
-<div id="stage"><canvas id="view" width="720" height="405" role="img" aria-label="Pixel-art sunset over snowy mountains, framed by tall pines, with a river and small waterfalls and a camper van with a campfire in a clearing"></canvas><div id="stagefx" aria-hidden="true"><canvas id="glowfx"></canvas><div id="artvig"></div></div><canvas id="inside" width="720" height="405" aria-hidden="true"></canvas></div>
+<div id="stage"><canvas class="pcEdge" aria-hidden="true"></canvas><canvas id="view" width="720" height="405" role="img" aria-label="Pixel-art sunset over snowy mountains, framed by tall pines, with a river and small waterfalls and a camper van with a campfire in a clearing"></canvas><div id="stagefx" aria-hidden="true"><canvas id="glowfx"></canvas><div id="artvig"></div></div><canvas id="inside" width="720" height="405" aria-hidden="true"></canvas></div>
 <div class="vignette" aria-hidden="true"></div>
 
 <header class="top">
@@ -743,7 +754,7 @@ body[data-scene="stream"][data-frame="postcard"] .switch:not([aria-checked="true
       </section>
       <section class="sgroup"><h3>Scene</h3>
         <p class="sl">Where your hideout is</p><div class="seg" id="setScene" role="group" aria-label="Scene"><button type="button" data-v="stream">The stream</button><button type="button" data-v="camp">River camp</button></div>
-        <div class="toggle-row" id="frameRow" style="margin-top:14px"><div><b>Postcard frame</b><span>Shows the stream as a framed print on a light page.</span></div><button class="switch" type="button" role="switch" id="setFrame" aria-label="Postcard frame"></button></div>
+        <div class="toggle-row" id="frameRow" style="margin-top:14px"><div><b>Postcard frame</b><span>Shows your scene as a framed print on a light page.</span></div><button class="switch" type="button" role="switch" id="setFrame" aria-label="Postcard frame"></button></div>
       </section>
       <section class="sgroup"><h3>Retreat</h3>
         <div class="toggle-row"><div><b>Sound</b><span>The river, birds by day, and the weather.</span></div><button class="switch" type="button" role="switch" id="setSound" aria-label="Sound"></button></div><div class="vols" id="vols"><label class="vol"><span>Volume</span><input type="range" id="volMaster" min="0" max="100" step="1"><output for="volMaster"></output></label><label class="vol"><span>Water</span><input type="range" id="volWater" min="0" max="100" step="1"><output for="volWater"></output></label><label class="vol"><span>Birds</span><input type="range" id="volBirds" min="0" max="100" step="1"><output for="volBirds"></output></label></div>
@@ -810,7 +821,7 @@ body[data-scene="stream"][data-frame="postcard"] .switch:not([aria-checked="true
 
 <div class="toast" id="toast" role="status" aria-live="polite"><div class="tt"><small>Your van</small><b id="toastName"></b></div><button class="btn small solid" type="button" id="toastSee">Take a look</button><button class="x" type="button" id="toastX" aria-label="Dismiss"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M3 3l8 8M11 3l-8 8"/></svg></button></div>
 
-<div class="fire" id="fire" hidden><canvas id="fireCv" aria-label="A campfire at night by the river"></canvas><div class="fveil" id="fireVeil"></div><p class="fhint" id="fireHint" role="status" aria-live="polite"></p><div class="fbar" id="fireBar" hidden><button class="btn solid" type="button" id="fTake">Take out the page</button><button class="btn" type="button" id="fSit">Just sit</button><div class="fback"><button class="btn" type="button" id="fBack" aria-haspopup="menu" aria-expanded="false">Go back</button><div class="smenu" id="fBackMenu" role="menu" hidden><button type="button" role="menuitem" id="fInside">Back inside<small>Your page goes back in your journal</small></button><button type="button" role="menuitem" id="fCamp">Out to camp<small>Kept as a draft for next time</small></button></div></div></div><div class="fbar" id="fireBar2" hidden><button class="btn" type="button" id="fPut">Put it away</button><button class="btn solid" type="button" id="fLower">Into the fire</button></div><div class="fcare" id="fireCare" hidden><h2>Before you let this go</h2><p>If you’re thinking about ending your life or hurting yourself, you deserve support right now. In the US, call or text <b>988</b> to reach the Suicide &amp; Crisis Lifeline, any time.</p><p>Outside the US, <b>findahelpline.com</b> lists free local lines. If you’re in immediate danger, call your local emergency number.</p><div class="row"><button class="btn" type="button" id="fCareBack">Back to writing</button><button class="btn solid" type="button" id="fCareGo">Go to the fire</button></div></div></div><div class="toast" id="letgoToast" role="status" aria-live="polite"><div class="tt"><small>Let go</small><b id="letgoT"></b></div></div>
+<div class="fire" id="fire" hidden><canvas class="pcEdge" aria-hidden="true"></canvas><canvas id="fireCv" aria-label="A campfire at night by the river"></canvas><div class="fveil" id="fireVeil"></div><p class="fhint" id="fireHint" role="status" aria-live="polite"></p><div class="fbar" id="fireBar" hidden><button class="btn solid" type="button" id="fTake">Take out the page</button><button class="btn" type="button" id="fSit">Just sit</button><div class="fback"><button class="btn" type="button" id="fBack" aria-haspopup="menu" aria-expanded="false">Go back</button><div class="smenu" id="fBackMenu" role="menu" hidden><button type="button" role="menuitem" id="fInside">Back inside<small>Your page goes back in your journal</small></button><button type="button" role="menuitem" id="fCamp">Out to camp<small>Kept as a draft for next time</small></button></div></div></div><div class="fbar" id="fireBar2" hidden><button class="btn" type="button" id="fPut">Put it away</button><button class="btn solid" type="button" id="fLower">Into the fire</button></div><div class="fcare" id="fireCare" hidden><h2>Before you let this go</h2><p>If you’re thinking about ending your life or hurting yourself, you deserve support right now. In the US, call or text <b>988</b> to reach the Suicide &amp; Crisis Lifeline, any time.</p><p>Outside the US, <b>findahelpline.com</b> lists free local lines. If you’re in immediate danger, call your local emergency number.</p><div class="row"><button class="btn" type="button" id="fCareBack">Back to writing</button><button class="btn solid" type="button" id="fCareGo">Go to the fire</button></div></div></div><div class="toast" id="letgoToast" role="status" aria-live="polite"><div class="tt"><small>Let go</small><b id="letgoT"></b></div></div>
 <details id="devChip"><summary>Dev</summary><div class="devp" id="devP"></div></details>
 
 <script>
@@ -1147,7 +1158,7 @@ function loadInside(m){
     if(o.clouds){const c=document.createElement('canvas');c.width=1440;c.height=405;const g=c.getContext('2d');
     g.drawImage(o.clouds,0,0);g.save();g.translate(1440,0);g.scale(-1,1);g.drawImage(o.clouds,0,0);g.restore();o.strip=c}return o})}
 function buildInterior(){
-  IN.port=innerHeight>innerWidth*1.05;const m=sceneMode||'sunset';if(IN.want===m)return;
+  IN.port=!pcOn()&&innerHeight>innerWidth*1.05;const m=sceneMode||'sunset';if(IN.want===m)return;
  IN.want=m;
   loadInside(m).then(o=>{if(IN.want!==m)return;
     if(IN.L&&IN.mode!==m){IN.fade.getContext('2d').drawImage(inCv,0,0);IN.fadeAt=performance.now()}
@@ -1214,15 +1225,15 @@ function drawInside(t,still){
 let mode='out',tr=null,quickVisit=false,reducedMotion=false,renderPaused=false,ready=false;
 const viewK={panel:0,panelT:0,bottom:0,bottomT:0,focus:0,focusT:0,pf:0,pfT:0};
 function place(el,w,h,P,cache,ri=0,bi=0){ // ri/bi: screen covered by a panel, which the art may leave bare
-  const W=innerWidth,H=innerHeight,s=Math.max(W/w,H/h)*P.z;
+  const W=stageEl.clientWidth||innerWidth,H=stageEl.clientHeight||innerHeight,s=Math.max(W/w,H/h)*P.z;
   let x=P.sx-P.fx*s,y=P.sy-P.fy*s;x=Math.min(0,Math.max(W-ri-w*s,x));y=Math.min(0,Math.max(H-bi-h*s,y));
   const k=`${(w*s).toFixed(1)}|${x.toFixed(1)}|${y.toFixed(1)}`;if(cache.k===k)return;cache.k=k;
   el.style.width=(w*s)+'px';el.style.height=(h*s)+'px';el.style.left=x+'px';el.style.top=y+'px'}
 function extRest(){
-  const W=innerWidth,H=innerHeight,s0=Math.max(W/NW,H/NH),visW=W/s0,k=clamp((350*S-visW)/((350-130)*S));
-  const F=geo('focus'),fx0=lerp(F[0]*S,F[1]*S,k),fy0=F[2]*S,free=W-viewK.panel,freeH=H-viewK.bottom;
-  return{fx:lerp(fx0,VAN.x,viewK.pf),fy:lerp(fy0,VAN.y,viewK.pf*.8),sx:free/2,sy:viewK.bottom?Math.max(90,freeH*.55):H/2,z:lerp(1,1.75,ease(viewK.focus))}}
-function inRest(){const M=IN.M;return{fx:inCv.width/2,fy:M?inCv.height*(IN.port?.42:.5):(IN.port?178:202),sx:innerWidth/2,sy:innerHeight/2,z:1}}
+  const W=stageEl.clientWidth||innerWidth,H=stageEl.clientHeight||innerHeight,s0=Math.max(W/NW,H/NH),visW=W/s0,k=clamp((350*S-visW)/((350-130)*S));
+  const F=geo('focus'),fx0=lerp(F[0]*S,F[1]*S,k),fy0=F[2]*S,free=W-(pcOn()?0:viewK.panel),freeH=H-(pcOn()?0:viewK.bottom);
+  return{fx:lerp(fx0,VAN.x,viewK.pf),fy:lerp(fy0,VAN.y,viewK.pf*.8),sx:free/2,sy:viewK.bottom&&!pcOn()?Math.max(90,freeH*.55):H/2,z:lerp(1,1.75,ease(viewK.focus))}}
+function inRest(){const M=IN.M;return{fx:inCv.width/2,fy:M?inCv.height*(IN.port?.42:.5):(IN.port?178:202),sx:(stageEl.clientWidth||innerWidth)/2,sy:(stageEl.clientHeight||innerHeight)/2,z:1}}
 const lp=(a,b,k)=>({fx:lerp(a.fx,b.fx,k),fy:lerp(a.fy,b.fy,k),sx:lerp(a.sx,b.sx,k),sy:lerp(a.sy,b.sy,k),z:lerp(a.z,b.z,k)});
 const DUR={enter:2.4,exit:1.9,fade:1.0};
 function poseAt(t){ // t on the entering timeline (0 = outside, end = inside); exit plays it backwards
@@ -1236,7 +1247,7 @@ function placeViews(){
   if(tr){const total=reducedMotion?DUR.fade:DUR.enter,tt=tr.dir>0?tr.t:total-tr.t*(total/(reducedMotion?DUR.fade:DUR.exit));P=poseAt(Math.max(0,tt))}
   else if(mode==='in')P={ext:extRest(),eo:0,int:inRest(),io:1};
   else P={ext:extRest(),eo:1,int:inRest(),io:0};
-  place(cv,NW,NH,P.ext,pc.e,viewK.panel*.72,viewK.bottom);place(inCv,inCv.width,inCv.height,P.int,pc.i);   // the art may run partly under a side panel; its glass shows it
+  place(cv,NW,NH,P.ext,pc.e,pcOn()?0:viewK.panel*.72,pcOn()?0:viewK.bottom);place(inCv,inCv.width,inCv.height,P.int,pc.i);   // the art may run partly under a side panel; its glass shows it
   if(pc.e.k!==pc.g){pc.g=pc.e.k;for(const el of [glowCv,artVig]){el.style.left=cv.style.left;el.style.top=cv.style.top;el.style.width=cv.style.width;el.style.height=cv.style.height}
     glowCv.style.filter=`blur(${Math.max(2,parseFloat(cv.style.width)/NW*1.6)}px)`}
   if(P.eo!==lastEo){cv.style.opacity=P.eo;stageFx.style.opacity=P.eo;lastEo=P.eo}
@@ -1251,7 +1262,28 @@ function startExit(done){
   if(tr||mode!=='in')return false;mode='exiting';tr={t:0,dur:reducedMotion?DUR.fade:DUR.exit,dir:-1,done,speed:quickVisit&&!reducedMotion?1.3:1};return true}
 document.addEventListener('pointerdown',()=>{if(tr&&(mode==='entering'||mode==='exiting'))tr.speed=Math.max(tr.speed||1,5)},true);   // tap to skip
 function finishTr(m){const d=tr.done;tr=null;mode=m;if(d)setTimeout(d,0)}
-function size(){IN.port=innerHeight>innerWidth*1.05;pc.e.k=pc.i.k='';placeViews();if(A)drawNow()}
+/* ---------- the camp as a postcard ---------- */
+function pcOn(){return document.body.dataset.scene==='camp'&&document.body.dataset.frame==='postcard'}
+function pcH12(x,y){let a=(x*.1031)%1,b=(y*.1031)%1,c=(x*.1031)%1;const d=a*(b+33.33)+b*(c+33.33)+c*(a+33.33);a+=d;b+=d;c+=d;return(((a+b)*c)%1+1)%1}
+function pcVn(x,y){const ix=Math.floor(x),iy=Math.floor(y),fx=x-ix,fy=y-iy,ux=fx*fx*(3-2*fx),uy=fy*fy*(3-2*fy);
+  const a=pcH12(ix,iy),b=pcH12(ix+1,iy),c=pcH12(ix,iy+1),d=pcH12(ix+1,iy+1);return a+(b-a)*ux+(c-a)*uy+(a-b-c+d)*ux*uy}
+function pcEdges(w,h,dpr){   // the deckled edge, the same recipe as the stream's: page-coloured flecks thinning into the picture
+  const f=Math.min(1,Math.max(.4,w/1000)),u=dpr*f,W=Math.round(w*dpr),H=Math.round(h*dpr),m=9*u,band=24*u,reach=Math.ceil(m+band*1.5+19*u);   // the edge scales with the card
+  const col=getComputedStyle(document.body).backgroundColor.match(/\d+/g).map(Number);
+  document.querySelectorAll('.pcEdge').forEach(cv=>{if(cv.width===W&&cv.height===H&&cv.dataset.col===String(col))return;cv.width=W;cv.height=H;cv.dataset.col=String(col);
+    const g=cv.getContext('2d'),im=g.createImageData(W,H),D=im.data;
+    for(let y=0;y<H;y++){const ty=Math.min(y,H-1-y);for(let x=0;x<W;x++){const t=Math.min(Math.min(x,W-1-x),ty);if(t>reach){x=W-1-reach-1;if(x<0)break;continue}
+      const n=pcVn(x/(30*u),y/(30*u))*14*u+pcVn(x/(7*u),y/(7*u))*5*u,k=Math.min(1,Math.max(0,(t-n+band*.5-m)/band)),sm=k*k*(3-2*k);
+      if(pcH12(Math.floor(x/(2*u)),Math.floor(y/(2*u)))>sm){const i=(y*W+x)*4;D[i]=col[0];D[i+1]=col[1];D[i+2]=col[2];D[i+3]=255}}}
+    g.putImageData(im,0,0)})}
+function pcLayout(){if(!pcOn())return;const R=document.documentElement.style,W=innerWidth,H=innerHeight,ph=Math.min(W,H)<700,top=ph?70:84,bottom=ph?150:178,dpr=devicePixelRatio||1;
+  const AW=952,AH=536,fit=Math.min(Math.max(200,W-32)/AW,Math.max(120,H-top-bottom)/AH),n=Math.floor(fit*dpr);
+  const k=n>=1&&n/dpr>=fit*.8?n/dpr:Math.floor(fit*AW*dpr)/(AW*dpr);   // whole device pixels per art pixel where it costs little room
+  const w=Math.round(AW*k*dpr)/dpr,h=Math.round(AH*k*dpr)/dpr,left=Math.round((W-w)/2*dpr)/dpr;
+  const y=Math.round((top+Math.max(0,(H-top-bottom-h-70)*.42))*dpr)/dpr;   // a short card sits a little above the middle of the free space, its caption under it
+  R.setProperty('--pc-top',y+'px');R.setProperty('--pc-left',left+'px');R.setProperty('--pc-w',w+'px');R.setProperty('--pc-h',h+'px');R.setProperty('--pccap-top',(y+h+14)+'px');
+  pcEdges(w,h,dpr)}
+function size(){pcLayout();IN.port=!pcOn()&&innerHeight>innerWidth*1.05;pc.e.k=pc.i.k='';placeViews();if(A)drawNow()}
 
 /* ---------- loop: camera at display rate, art at a steppy 12 fps ---------- */
 const STEP=1000/12,T0=performance.now();let lastF=0,lastDraw=0;
@@ -1316,7 +1348,13 @@ function worldWeather(d=new Date()){ // a gentle, seeded pattern: changes every 
   const day=Math.floor((d.getTime()-d.getTimezoneOffset()*6e4)/864e5),block=Math.floor(d.getHours()/3);
   const r=h2(day*7+3,block*13+1);return r<.6?'clear':r<.8?'windy':'rain'}
 let ST={time:'golden',weather:'clear'};
-function resolveWorld(){const t=state.dev.time;ST.time=t==='auto'||!TIME_LABEL[t]?clockTime():t;ST.weather='clear'}   // weather is paused for now
+const PC_CAP={morning:['The river camp, morning','First light on the water · the van still cold','WIND 4 KM/H · 9 °C · CLEAR'],
+  midday:['The river camp, midday','Sun high over the pines · the river running bright','WIND 8 KM/H · 19 °C · CLEAR'],
+  golden:['The river camp, golden hour','The sun low behind the peaks · smoke from the fire','WIND 3 KM/H · 15 °C · CLEAR'],
+  night:['The river camp, after dark','Stars over the ridge · the fire burning low','WIND 2 KM/H · 7 °C · CLEAR']};
+function pcCaption(){if(document.body.dataset.scene!=='camp')return;const c=PC_CAP[ST.time]||PC_CAP.golden,T=document.getElementById('s3capTitle');if(!T)return;
+  T.textContent=c[0];document.getElementById('s3capSub').textContent=c[1];document.getElementById('s3capData').textContent=c[2]}
+function resolveWorld(){const t=state.dev.time;ST.time=t==='auto'||!TIME_LABEL[t]?clockTime():t;ST.weather='clear';pcCaption()}   // weather is paused for now
 function updatePlace(){
   const night=ST.time==='night';
   $('#place').textContent='River camp · '+(night&&ST.weather==='clear'?'Starry night':TIME_LABEL[ST.time]+(ST.weather==='clear'?'':' · '+WX_LABEL[ST.weather]));
@@ -1985,7 +2023,7 @@ $('#jPeek').addEventListener('click',peek);$('#jBack').addEventListener('click',
 const IDLE_MS=4500;let idleT=0;
 function busy(){if(body.dataset.peek)return false;const a=document.activeElement;return!!(page||body.dataset.focus==='journal'||mode!=='out'||$('#devChip').open||$('#resurf').dataset.show==='true'||$('#toast').dataset.show==='true'||
   (a&&a!==body&&a.closest&&a.closest('.top,.dock,.bottomnav,#devChip')&&a.matches(':focus-visible')))}
-function goIdle(force){if(!force&&busy()){idleT=setTimeout(goIdle,IDLE_MS);return}body.dataset.idle='true'}
+function goIdle(force){if(!force&&document.body.dataset.frame==='postcard')return;if(!force&&busy()){idleT=setTimeout(goIdle,IDLE_MS);return}body.dataset.idle='true'}
 function wakeUI(){if(body.dataset.idle)delete body.dataset.idle;clearTimeout(idleT);idleT=setTimeout(goIdle,IDLE_MS)}
 ['pointermove','pointerdown','keydown','wheel','touchstart'].forEach(e=>addEventListener(e,wakeUI,{passive:true,capture:true}));
 wakeUI();
@@ -2033,10 +2071,11 @@ function loadDemo(){const now=Date.now(),day=864e5;
 if(!state.meta.reflectV1){state.settings.defaultInput='write';state.meta.reflectV1=true;persist()}   // one-time: Reflect now opens Write
 initMoods();applyMotion();buildRV();size();applyWorld();updateDock();applySound();updateCustDot();renderDev();
 /* ---------- the stream or the river camp ---------- */
-function sceneOn(){return (state.settings.scene||'stream')==='stream'}
-function syncSceneUI(){const v=state.settings.scene||'stream';$$('#setScene button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.v===v)));
-  $('#setFrame').setAttribute('aria-checked',String(state.settings.frame!==false));$('#frameRow').hidden=v!=='stream'}
-function applyScene(){const on=sceneOn();body.dataset.scene=on?'stream':'camp';body.dataset.frame=on&&state.settings.frame!==false?'postcard':'full';syncSceneUI()}
+function sceneOn(){return (state.settings.scene||'camp')==='stream'}
+function syncSceneUI(){const v=state.settings.scene||'camp';$$('#setScene button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.v===v)));
+  $('#setFrame').setAttribute('aria-checked',String(state.settings.frame!==false))}
+function applyScene(){const on=sceneOn();body.dataset.scene=on?'stream':'camp';body.dataset.frame=state.settings.frame!==false?'postcard':'full';syncSceneUI();if(body.dataset.frame==='postcard'&&body.dataset.idle)delete body.dataset.idle;
+  if(on){if(window.__scene3d)window.__scene3d.setTime('golden')}else{pcCaption();if(typeof size==='function')size()}}   // the caption and the card follow the scene
 $$('#setScene button').forEach(b=>b.addEventListener('click',()=>{state.settings.scene=b.dataset.v;persist();applyScene()}));
 $('#setFrame').addEventListener('click',()=>{state.settings.frame=state.settings.frame===false;persist();applyScene()});
 /* the volume icon is a plain on/off switch; the levels live in Settings */
@@ -2212,7 +2251,7 @@ let VW=952,VH=536,camL=0,camT=EXT,restT=EXT,endT=190;
 const smk=document.createElement('canvas'),smx=smk.getContext('2d');let smImg=null;
 const gA=document.createElement('canvas'),gB=document.createElement('canvas'),ga=gA.getContext('2d'),gb=gB.getContext('2d');
 const FILTER_OK=(()=>{try{ga.filter='blur(1px)';const ok=ga.filter==='blur(1px)';ga.filter='none';return ok}catch(e){return false}})();
-function sizeView(){const a=innerWidth/Math.max(1,innerHeight);
+function sizeView(){const a=(layer.clientWidth||innerWidth)/Math.max(1,layer.clientHeight||innerHeight);
   if(a>=PWD/VIEWH){VW=PWD;VH=Math.round(PWD/a)}else{VH=VIEWH;VW=Math.round(VIEWH*a);if(VW<540){VW=540;VH=Math.min(FULLH,Math.round(540/a))}}
   cv.width=VW;cv.height=VH;cx.imageSmoothingEnabled=false;
   camL=clamp(FCX-VW/2,0,PWD-VW);restT=clamp(EXT+VIEWH-VH,0,FULLH-VH);endT=Math.max(0,Math.min(restT-260,190-(VH-VIEWH)));

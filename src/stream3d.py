@@ -1,6 +1,6 @@
-"""The stream: a 3D scene (three.js) becomes Hideout's default backdrop; the river camp stays as a choice in Settings.
-   - Settings > Scene: The stream / River camp, and a Postcard frame switch (on by default).
-   - Over the postcard the interface turns light, on a white page; full screen keeps the dark glass.
+"""The stream: a 3D scene (three.js), offered beside the river camp in Settings (the camp is the default again).
+   - Settings > Scene: The stream / River camp, and a Postcard frame switch (on by default) for either scene.
+   - Over the postcard the interface turns light, on a white page; full screen keeps the dark glass. (The camp's postcard is laid out by postcard.py.)
    - Memories is called Journal. The sound button is a plain on/off volume icon. The logo sits at the top.
    - Writing in the van and the van's looks belong to the river camp, so they hide while the stream is showing.
    python3 stream3d.py <in.html> <out.html>"""
@@ -51,17 +51,17 @@ rep('Saved to Memories', 'Saved to Journal', 3)
 rep('      <section class="sgroup"><h3>Retreat</h3>',
     '      <section class="sgroup"><h3>Scene</h3>\n'
     '        <p class="sl">Where your hideout is</p><div class="seg" id="setScene" role="group" aria-label="Scene"><button type="button" data-v="stream">The stream</button><button type="button" data-v="camp">River camp</button></div>\n'
-    '        <div class="toggle-row" id="frameRow" style="margin-top:14px"><div><b>Postcard frame</b><span>Shows the stream as a framed print on a light page.</span></div><button class="switch" type="button" role="switch" id="setFrame" aria-label="Postcard frame"></button></div>\n'
+    '        <div class="toggle-row" id="frameRow" style="margin-top:14px"><div><b>Postcard frame</b><span>Shows your scene as a framed print on a light page.</span></div><button class="switch" type="button" role="switch" id="setFrame" aria-label="Postcard frame"></button></div>\n'
     '      </section>\n'
     '      <section class="sgroup"><h3>Retreat</h3>')
 rep("function renderSettings(){", "function renderSettings(){syncSceneUI();")
 rep("const inVan=state.settings.writeWhere==='van';", "const inVan=state.settings.writeWhere==='van'&&document.body.dataset.scene!=='stream';")
 rep("requestAnimationFrame(frame);\n(function waitReady(){",
     r"""/* ---------- the stream or the river camp ---------- */
-function sceneOn(){return (state.settings.scene||'stream')==='stream'}
-function syncSceneUI(){const v=state.settings.scene||'stream';$$('#setScene button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.v===v)));
-  $('#setFrame').setAttribute('aria-checked',String(state.settings.frame!==false));$('#frameRow').hidden=v!=='stream'}
-function applyScene(){const on=sceneOn();body.dataset.scene=on?'stream':'camp';body.dataset.frame=on&&state.settings.frame!==false?'postcard':'full';syncSceneUI()}
+function sceneOn(){return (state.settings.scene||'camp')==='stream'}
+function syncSceneUI(){const v=state.settings.scene||'camp';$$('#setScene button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.v===v)));
+  $('#setFrame').setAttribute('aria-checked',String(state.settings.frame!==false))}
+function applyScene(){const on=sceneOn();body.dataset.scene=on?'stream':'camp';body.dataset.frame=state.settings.frame!==false?'postcard':'full';syncSceneUI()}
 $$('#setScene button').forEach(b=>b.addEventListener('click',()=>{state.settings.scene=b.dataset.v;persist();applyScene()}));
 $('#setFrame').addEventListener('click',()=>{state.settings.frame=state.settings.frame===false;persist();applyScene()});
 /* the volume icon is a plain on/off switch; the levels live in Settings */
@@ -79,7 +79,7 @@ body[data-scene="stream"] #scene3d{display:block}
 body[data-scene="stream"] #stage,body[data-scene="stream"] .vignette{display:none}
 body[data-scene="stream"][data-frame="postcard"] #scene3d{inset:auto;left:50%;top:var(--s3-top,84px);width:var(--s3-w,80vw);height:var(--s3-h,60vh);transform:translateX(-50%)}
 .s3cap{display:none;position:fixed;left:0;right:0;top:var(--s3cap-top,80%);z-index:1;text-align:center;pointer-events:none;padding:0 16px}
-body[data-scene="stream"][data-frame="postcard"] .s3cap{display:block}
+body[data-frame="postcard"] .s3cap{display:block}
 .s3cap b{display:block;font:500 15px/1.3 var(--ui);color:var(--ink)}
 .s3cap span{display:block;font:400 13.5px/1.45 var(--ui);color:var(--ink-2)}
 .s3cap code{display:block;margin-top:3px;font:400 11.5px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--ink-3);letter-spacing:.05em}
@@ -93,19 +93,19 @@ body[data-scene="stream"][data-frame="postcard"] .s3cap{display:block}
 body[data-scene="stream"] #place{display:none}
 body[data-scene="stream"] .sgroup:has(#custBtn),body[data-scene="stream"] p.sl:has(+#setWhere),body[data-scene="stream"] #setWhere,body[data-scene="stream"] #setWhere+.note{display:none}
 /* over the postcard: a light interface on a white page */
-body[data-scene="stream"][data-frame="postcard"]{background:#fbfaf7;
+body[data-frame="postcard"]{background:#fbfaf7;
   --ground:#fbfaf7;--paper:#ffffff;--paper-2:rgba(31,42,51,.05);--paper-3:rgba(31,42,51,.1);
   --glass:rgba(255,255,255,.94);--glass-strong:#ffffff;--field:rgba(31,42,51,.04);
   --ink:#1f2a33;--ink-2:#55616b;--ink-3:#8a949c;--line:rgba(31,42,51,.1);--line-2:rgba(31,42,51,.18);
   --olive:#3f8a3a;--olive-ink:#ffffff;--accent:#c4552f;--danger:#b8432e;
   --frost:#ffffff;--frost-line:rgba(31,42,51,.12);--frost-hi:#f1f2ee;
   --shadow:0 18px 50px rgba(31,42,51,.12);--shadow-s:0 4px 16px rgba(31,42,51,.07)}
-body[data-scene="stream"][data-frame="postcard"] .jfield{background:#fff;border:1px solid var(--line);color:var(--ink-2)}
-body[data-scene="stream"][data-frame="postcard"] .jfield:hover{background:#fff;color:var(--ink)}
-body[data-scene="stream"][data-frame="postcard"] .tnb,body[data-scene="stream"][data-frame="postcard"] .icon{-webkit-backdrop-filter:none;backdrop-filter:none}
+body[data-frame="postcard"] .jfield{background:#fff;border:1px solid var(--line);color:var(--ink-2)}
+body[data-frame="postcard"] .jfield:hover{background:#fff;color:var(--ink)}
+body[data-frame="postcard"] .tnb,body[data-frame="postcard"] .icon{-webkit-backdrop-filter:none;backdrop-filter:none}
 @media (max-width:760px){.brand h1.logo img{height:40px}}
-body[data-scene="stream"][data-frame="postcard"] .switch::after{background:#fff}
-body[data-scene="stream"][data-frame="postcard"] .switch:not([aria-checked="true"]){background:#d9ddd6}
+body[data-frame="postcard"] .switch::after{background:#fff}
+body[data-frame="postcard"] .switch:not([aria-checked="true"]){background:#d9ddd6}
 </style>""")
 
 # ---------- three.js and the scene module ----------

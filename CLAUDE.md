@@ -19,11 +19,11 @@ python3 build.py              # → index.html (~12.8 MB, all art and sound inli
 
 `build.py` runs `src/assemble.py`, which writes `build/fragment.html` and then runs each pass over it, in this order:
 
-theme → journal → burn → bundle → sound → van → safety → patterns → field → write → card → voice → tasks → stream3d
+theme → journal → burn → bundle → sound → van → safety → patterns → field → write → card → voice → tasks → stream3d → postcard
 
 - `assemble.py` combines the base app (`assets/talio-home-v6-3d.html`, the older UI) with the 2D scene engine (`src/scene2d.js`) and inlines the art.
 - Each pass is a Python script `python3 src/<pass>.py in out` that patches the HTML with `rep(a, b, n=1)`. `rep` **asserts the exact number of matches** and exits on a mismatch, so an earlier pass changing a string breaks a later pass loudly. That's on purpose. When you change a pass, keep later passes' anchors intact, or update them.
-- Later passes patch the output of earlier ones, so the newest behaviour of a feature is often in a later file (the writing card: write.py then card.py; voice: voice.py replaces LiveTranscriber; the stream: stream3d.py is last).
+- Later passes patch the output of earlier ones, so the newest behaviour of a feature is often in a later file (the writing card: write.py then card.py; voice: voice.py replaces LiveTranscriber; the stream: stream3d.py; the camp's postcard layout: postcard.py, which is last).
 - New work: edit the pass that owns the feature, or add a new pass at the end of the list in `assemble.py`. Keep the docstring at the top of each pass describing what it changes and why.
 
 ### The stream (3D)
@@ -41,6 +41,8 @@ theme → journal → burn → bundle → sound → van → safety → patterns 
 
 ### The river camp (2D)
 
+- As a postcard (`src/postcard.py`): the card keeps the art's 16:9 (952×536), centred between header and field; whole device pixels per art pixel when that costs ≤20% of the room, else the exact fit, always nearest-neighbour. `place()`/`extRest()`/`inRest()` fit the camp to `#stage` (the card) instead of the window, so the van pan/zoom and the van's inside stay in the card. The deckled edge is a `.pcEdge` canvas over the card (same recipe as the stream's). The burn scene uses the card on wider screens and stays full screen on phones (too small there). The caption comes from `PC_CAP` by `ST.time`.
+
 - `src/scene2d.js` is the canvas engine: time of day, water, fire, birds, fish, stars, the squirrel (`drawSquirrel`), ferns (`drawFerns`), and the `Van` module (paint ramps and upgrade layers).
 - Writing in the van and the van's looks only apply to the camp; they're hidden while the stream shows.
 - `tools/asset-scripts/` holds the one-off scripts that made the van, fern and squirrel assets. Reference only; they need original images that aren't in the repo.
@@ -54,7 +56,8 @@ theme → journal → burn → bundle → sound → van → safety → patterns 
 
 ## Decisions already made (don't undo without asking)
 
-- The stream is the default scene, framed as a postcard on white, golden hour only for now. Its composition follows Kyoto88's reference (see the Composition note above).
+- The river camp is the default scene again (Settings > Scene; the stream is the other choice, golden hour only for now, its composition following Kyoto88's reference, see the Composition note above).
+- Both scenes show as a postcard on the light page by default: deckled edge, caption under it, header above, journal field below; on that page the header and field never rest away when idle. The Postcard switch off gives the old full-screen look (the camp's dark glass UI that rests when idle).
 - Header: the logo top left; one menu in the middle (Journal, Tasks, Settings); the volume icon (on/off) far right. Logo colours: both words red, trees green, river blue.
 - Writing happens in place: the bottom field expands into the journal card.
 - Writing card: one question at a time. It opens on "How are you feeling?"; picking a mood swaps in a question for that mood (low/frustrated → "What would make today feel good?"). A small round-arrow icon shuffles questions. The question is saved with the entry (`prompt`). No placeholder text, just the cursor.
