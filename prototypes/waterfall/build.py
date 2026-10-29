@@ -20,35 +20,27 @@ cols = sway[Y0:].any(0); top = np.where(cols, sway[Y0:].argmax(0), H - Y0 - 1).a
 top = nd.gaussian_filter1d(nd.minimum_filter1d(top, 25), 6)
 
 # ---------- colour-cycling ramps (the colours each part already uses, darkest to brightest) ----------
-B = base.astype(np.float32); lum = B @ [.299, .587, .114]
+B = base.astype(np.float32); lum = B @ [.299, .587, .114]; rows = np.arange(H)[:, None]
 parts = [('fall1', 12), ('fall2', 10)] if STEP >= 3 else []
 if STEP >= 4: parts += [('foam', 10)]
 if STEP >= 5: parts += [('pool', 16), ('streak', 12)]
-CY = 40; cmap = np.zeros((H - CY, W, 4), np.uint8); ramps = {}; order = []
-taken = np.zeros((H, W), bool)
-for ch, (k, n) in enumerate(parts):
-    m = K[k] & ~taken & ~sway
-    if k == 'pool': m &= ~K['streak']                                     # the streak under the fall has its own shimmer
-    taken |= m
+CY = 40; ramps = {}
+cmA = np.zeros((H - CY, W, 4), np.uint8); cmA[..., 3] = 255                # R fall1, G fall2, B foam: ramp index + 1
+cmB = np.zeros((H - CY, W, 4), np.uint8); cmB[..., 3] = 255                # R pool (1..) or streak (101..), G the falls' fade-in at the lip (1..21)
+def ramp(k, m, n, img, ch, off=0):
     L = lum[m]; qs = np.quantile(L, np.linspace(0, 1, n + 1)); idx = np.clip(np.searchsorted(qs, L, 'right') - 1, 0, n - 1)
-    ramps[k] = [B[m][idx == i].mean(0).round(1).tolist() for i in range(n)]; order.append(k)
-    c = ch if ch < 4 else None
-    cmap[..., ch % 4][m[CY:]] = (idx + 1 + (ch // 4) * 0).astype(np.uint8)
-# five parts need a fifth channel: the streak shares the pool's channel but with values above 100
-if 'streak' in order:
-    cmap = np.zeros((H - CY, W, 4), np.uint8)
-    for k, chn, off in (('fall1', 0, 0), ('fall2', 1, 0), ('foam', 2, 0), ('pool', 3, 0), ('streak', 3, 100)):
-        m = K[k] & ~sway
-        if k == 'pool': m = m & ~K['streak'] & ~K['foam'] & ~K['fall1']
-        if k == 'streak': m = m & ~K['foam'] & ~K['fall1']
-        n = len(ramps[k]); L = lum[m]; qs = np.quantile(L, np.linspace(0, 1, n + 1)); idx = np.clip(np.searchsorted(qs, L, 'right') - 1, 0, n - 1)
-        ramps[k] = [B[m][idx == i].mean(0).round(1).tolist() for i in range(n)]
-        cmap[..., chn][m[CY:]] = (idx + 1 + off).astype(np.uint8)
-    cmap[..., 3] = np.where(cmap[..., 3] > 0, cmap[..., 3], 0)
-cmap_alpha = cmap.copy(); cmap_alpha[..., 3] = np.where(cmap.any(-1), np.maximum(cmap[..., 3], 0), 0)
-# PNG keeps colours under alpha 0 only unreliably, so channel 3 is stored in a second image
-cm_rgb = np.dstack([cmap[..., 0], cmap[..., 1], cmap[..., 2], np.full(cmap.shape[:2], 255, np.uint8)])
-cm_b = np.dstack([cmap[..., 3], cmap[..., 3], cmap[..., 3], np.full(cmap.shape[:2], 255, np.uint8)])
+    ramps[k] = [B[m][idx == i].mean(0).round(1).tolist() for i in range(n)]; img[..., ch][m[CY:]] = (idx + 1 + off).astype(np.uint8)
+stillfg = FG & ~sway                                                      # the rocks (and anything else still in front)
+if STEP >= 3:
+    for k, n, ch, lipk in (('fall1', 12, 0, 'lip1'), ('fall2', 10, 1, 'lip2')):
+        m = K[k] & ~sway; ramp(k, m, n, cmA, ch)
+        fade = np.clip((rows - K[lipk][None, :] - 3) / 12., 0, 1)        # the top 3 pixels of the fall hold still, the flow fades in below
+        cmB[..., 1][m[CY:]] = np.maximum(cmB[..., 1][m[CY:]], (np.round(fade * 20) + 1).astype(np.uint8)[CY:][m[CY:]])
+if STEP >= 4: ramp('foam', K['foam'] & ~sway & ~K['fall1'], 10, cmA, 2)
+if STEP >= 5:
+    pm = K['pool'] & ~stillfg & ~K['foam'] & ~K['fall1']; st = pm & K['streak']; pm = pm & ~K['streak']
+    ramp('pool', pm, 16, cmB, 0); ramp('streak', st, 12, cmB, 0, 100)
+cm_rgb, cm_b = cmA, cmB
 pool_px = np.argwhere(K['pool'] & ~sway & (lum > 110))   # candidate spots for glints
 rng = np.random.default_rng(3); glints = pool_px[rng.choice(len(pool_px), 18, replace=False)].tolist() if len(pool_px) else []
 fishspots = np.argwhere(K['pool'] & ~nd.binary_dilation(FG, iterations=30) & ~K['streak'])
@@ -124,24 +116,42 @@ Promise.all([load('@BASE@'),load('@FGR@'),load('@CMA@'),load('@CMB@')]).then(([b
   const bc=document.createElement('canvas');bc.width=W;bc.height=H;const bx=bc.getContext('2d',{willReadFrequently:true});bx.drawImage(bi,0,0);const BASE=bx.getImageData(0,0,W,H),ORIG=BASE.data.slice();
   // colour cycling: each pixel keeps its place and only steps along the ramp of colours it belongs to
   const rd=im=>{const c=document.createElement('canvas');c.width=W;c.height=H-CY;const x=c.getContext('2d',{willReadFrequently:true});x.drawImage(im,0,0);return x.getImageData(0,0,W,H-CY).data};
-  const A=rd(ca),Bm=rd(cb),L={fall1:[],fall2:[],foam:[],pool:[],streak:[]};
-  for(let i=0,n=W*(H-CY);i<n;i++){const o=i+CY*W;if(A[i*4])L.fall1.push(o,A[i*4]-1);if(A[i*4+1])L.fall2.push(o,A[i*4+1]-1);if(A[i*4+2])L.foam.push(o,A[i*4+2]-1);
-    const q=Bm[i*4];if(q>100)L.streak.push(o,q-101);else if(q)L.pool.push(o,q-1)}
+  const A=rd(ca),Bm=rd(cb),L={fall1:[],fall2:[],foam:[]},FOAMPX=new Uint8Array(W*H),FADE=new Float32Array(W*H),KIND=new Uint8Array(W*H),RIDX=new Uint8Array(W*H),PL=[];
+  for(let i=0,n=W*(H-CY);i<n;i++){const o=i+CY*W;if(A[i*4])L.fall1.push(o,A[i*4]-1);if(A[i*4+1])L.fall2.push(o,A[i*4+1]-1);if(A[i*4+2]){L.foam.push(o,A[i*4+2]-1);FOAMPX[o]=1}
+    if(Bm[i*4+1])FADE[o]=(Bm[i*4+1]-1)/20;const q=Bm[i*4];if(q>100){KIND[o]=2;RIDX[o]=q-101;PL.push(o)}else if(q){KIND[o]=1;RIDX[o]=q-1;PL.push(o)}}
   const DEL={};for(const k in RAMPS){const R=RAMPS[k];DEL[k]=R.map((_,i)=>{const row=[];for(let s=-3;s<=3;s++){const j=Math.min(R.length-1,Math.max(0,i+s));row.push([R[j][0]-R[i][0],R[j][1]-R[i][1],R[j][2]-R[i][2]])}return row})}
-  const put=(d,k,o,i,s)=>{const D=DEL[k][i][Math.max(-3,Math.min(3,s))+3],p=o*4;d[p]=ORIG[p]+D[0];d[p+1]=ORIG[p+1]+D[1];d[p+2]=ORIG[p+2]+D[2]};
+  const put=(d,k,o,i,s)=>{const R=DEL[k],D=R[Math.min(i,R.length-1)][Math.max(-3,Math.min(3,s))+3],p=o*4;d[p]=ORIG[p]+D[0];d[p+1]=ORIG[p+1]+D[1];d[p+2]=ORIG[p+2]+D[2]};
+  const FX=1172,FY=648;   // the base of the main fall
   function cycle(d,t){
     for(const [k,sp,len] of [['fall1',11,7],['fall2',8,5]]){const P=L[k];if(!P.length)continue;const PAT=[0,1,2,1,0,-1,-2,-1];   // bright and dark streaks running down each fall
       for(let q=0;q<P.length;q+=2){const o=P[q],x=o%W,y=(o/W)|0,c=Math.floor(x/3),h=hash(c*1.7+(k==='fall2'?40:0)),ph2=Math.floor((y+h*60)/(len+h*5)-t*sp*(.8+h*.5));
-        put(d,k,o,P[q+1],Math.round(PAT[((ph2%8)+8)%8]*(.6+h*.5)))}}
-    if(L.foam.length){const P=L.foam,f=Math.floor(t*7);for(let q=0;q<P.length;q+=2){const o=P[q],x=o%W,y=(o/W)|0;   // foam churning
-      const n=vn(x/7+f*.37,y/5-f*.61)+vn(x/3-f*.23,y/3+f*.4)*.6;put(d,'foam',o,P[q+1],Math.round((n-.8)*2.6))}}
-    if(L.pool.length){const P=L.pool;for(let q=0;q<P.length;q+=2){const o=P[q],x=o%W,y=(o/W)|0,dx=x-1172,dy=(y-648)/.24,r=Math.sqrt(dx*dx+dy*dy);   // rings spreading from the base of the fall
-      const w=Math.sin(r/22-t*1.5),fade=Math.max(0,1-r/900);put(d,'pool',o,P[q+1],w>.72?Math.round(1.6*fade):w<-.85?-Math.round(fade):0)}}
-    if(L.streak.length){const P=L.streak;for(let q=0;q<P.length;q+=2){const o=P[q],x=o%W,y=(o/W)|0;   // the reflection under the fall shimmers in short horizontal flecks
-      const n=vn(x/9+t*.8,y/2.2-t*1.6);put(d,'streak',o,P[q+1],Math.round((n-.5)*4.4))}}}
+        put(d,k,o,P[q+1],Math.round(PAT[((ph2%8)+8)%8]*(.6+h*.5)*FADE[o]))}}   // held steady at the lip, flowing just below
+    if(L.foam.length){const P=L.foam;for(let q=0;q<P.length;q+=2){const o=P[q],x=o%W,y=(o/W)|0;   // foam churning hard at the base
+      const n=vn(x/6+t*2.1,y/4-t*3.3)+vn(x/2.5-t*1.7,y/2.5+t*2.6)*.7;put(d,'foam',o,P[q+1],Math.round((n-.7)*4.8))}}
+    if(!PL.length)return;
+    for(let q=0;q<PL.length;q++){const o=PL[q],x=o%W,y=(o/W)|0,dx=x-FX,dy=(y-FY)/.24,r=Math.sqrt(dx*dx+dy*dy);
+      const near=Math.max(0,1-(y-FY)/280)*(.45+.55*Math.max(0,1-Math.abs(dx)/650));   // busy near the fall, calm toward you
+      // the reflections wobble side to side (only ever borrowing water from the same row), the waves travelling toward you with a gentle current
+      const wob=(1.5+7*near)*Math.sin(y*.42-t*3.1+Math.sin(x*.012+t*.4)*1.3)+(1+2*near)*Math.sin(y*1.3-t*5.2+x*.02);
+      let so=o+Math.round(wob/2)*2;if(so<0||so>=W*H||(so/W|0)!==y||KIND[so]===0)so=o;const ks=KIND[so],ri=RIDX[so];let st;
+      if(ks===2){const n=vn(x/8+t*2.4,y/2-t*5.5)+vn(x/3-t*1.8,y/1.6+t*4)*.5;st=Math.round((n-.75)*5.5)}   // the bright streak shimmers fast
+      else{const w=Math.sin(r/15-t*2.4),fade=Math.max(0,1-r/820);                                       // rings spreading from the base, fading as they go
+        const cur=vn(x/40,y/5-t*1.1)-.5;st=(w>.45?Math.round(3.2*fade):w<-.7?-Math.round(2.2*fade):0)+Math.round(cur*2.2*(.4+.6*near))}
+      const RR=DEL[ks===2?'streak':'pool'],D=RR[Math.min(ri,RR.length-1)][Math.max(-3,Math.min(3,st))+3],p=o*4,ps=so*4;d[p]=ORIG[ps]+D[0];d[p+1]=ORIG[ps+1]+D[1];d[p+2]=ORIG[ps+2]+D[2]}}
+  /* foam patches breaking off the base and drifting outward over the pool, fading */
+  const PATCH=[];for(let i=0;i<46;i++)PATCH.push({ph:hash(i*3.1)*10,ang:(hash(i*5.3)-.5)*2.8,sp:12+hash(i*7.7)*22,sz:3+Math.floor(hash(i*2.2)*5)});
+  function churn(t){const f=Math.floor(t*7);   // strong churning white water right where the fall hits the pool
+    for(let y=FY-10;y<FY+22;y+=2)for(let x=FX-150;x<FX+150;x+=2){const ex=(x-FX)/150,ey=(y-FY-4)/16,e=ex*ex+ey*ey;if(e>1)continue;const o=y*W+x;if(o<0||o>=W*H||(KIND[o]===0&&!FOAMPX[o]))continue;
+      const n=vn(x/6+f*.55,y/3-f*.9)*.65+vn(x/2.6-f*.4,y/2+f*.7)*.35;if(n<.38+.42*e)continue;px(g,x,y,n>.75?'#ffffff':n>.6?'#eef6fb':'#d6e6ef')}}
+  function patches(t){for(let i=0;i<PATCH.length;i++){const P=PATCH[i],life=10,a=((t+P.ph)%life)/life,k=Math.floor((t+P.ph)/life);
+      const ang=P.ang+(hash(i+k*13.7)-.5)*.6,dist=a*P.sp*life*(1-a*.35),x0=FX+(hash(i*1.3+k)-.5)*130,y0=FY+4;
+      const x=x0+Math.sin(ang)*dist,y=y0+Math.abs(Math.cos(ang))*dist*.22+a*14;                              // flattened by perspective, carried toward you
+      const vis=1-a*.85,n=Math.max(1,Math.round(P.sz*(1-a*.55)));
+      for(let j=0;j<n*n;j++){if(hash(j*1.9+i*7.3+k)>vis*.95)continue;const ox=(j%n)*2-n,oy=Math.floor(j/n)*2-n*.6,o=(Math.round((y+oy)/2)*2)*W+Math.round((x+ox)/2)*2;
+        if(o<0||o>=W*H||KIND[o]===0)continue;px(g,x+ox,y+oy,j%3?'#eef6fb':'#cfe2ec')}}}
   function frame(now){requestAnimationFrame(frame);const f=Math.floor((now-t0)/1000*FPS);if(f===last||!playing||!active())return;last=f;const t=f/FPS;
     if(STEP>=3){cycle(BASE.data,t)}g.putImageData(BASE,0,0);
-    if(STEP>=5)glints(t);if(STEP>=6)fish(t);if(STEP>=4)mist(t);
+    if(STEP>=5){churn(t);patches(t);glints(t)}if(STEP>=6)fish(t);if(STEP>=4)mist(t);
     if(STEP>=2){O.fill(0);const sw=.7+.3*Math.sin(t*.33);
       const off=new Float32Array(fw);for(let x=0;x<fw;x++)off[x]=AMP*sw*(Math.sin(t*1.2+ph[x])*.8+Math.sin(t*2.05+ph[x]*1.7)*.2);
       for(let y=0;y<fh;y++){const r=y*fw;for(let x=0;x<fw;x++){const d=Math.round(off[x]*wt[r+x]/SNAP)*SNAP,sx=x-d;

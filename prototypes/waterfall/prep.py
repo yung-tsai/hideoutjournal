@@ -66,12 +66,18 @@ rim = nd.binary_dilation(core, iterations=2) & ~core & (diff > 28) & (rows > 630
 fg = core | rim
 holes = nd.binary_fill_holes(fg) & ~fg; hl, hn = nd.label(holes); hs = nd.sum(holes, hl, range(hn + 1))
 fg |= np.isin(hl, [i for i in range(1, hn + 1) if hs[i] <= 80])
-# which of it sways: the ferns (fine, ragged), not the rocks (big, smooth, rounded)
-mu = nd.uniform_filter(Mg, 9); sd = np.sqrt(np.maximum(nd.uniform_filter(Mg * Mg, 9) - mu * mu, 0))   # fronds are busy, rocks are smooth
-smooth = nd.binary_opening(fg & (sd < 7), iterations=2)
-rl, rn = nd.label(smooth); rs = nd.sum(smooth, rl, range(rn + 1))
-rocks = nd.binary_fill_holes(np.isin(rl, [i for i in range(1, rn + 1) if rs[i] > 1500]))
-rocks = nd.binary_dilation(rocks, iterations=2) & fg & ~nd.binary_dilation(fg & (sd > 12) & ~rocks, iterations=1)
+# which of it sways: only the ferns. The rocks are rounded, dark navy-purple with a warm rim; fern leaflets are teal-green.
+r_, g_, b_ = M[..., 0], M[..., 1], M[..., 2]
+# the five rocks along the bottom, outlined by hand (centre x, centre y, half width, half height in master pixels)
+ROCKS = [(284, 838, 86, 100), (496, 885, 82, 86), (946, 930, 92, 62), (1178, 908, 70, 64), (1560, 858, 52, 70)]
+hull = np.zeros((H, W), bool)
+for cx, cy, rx, ry in ROCKS: hull |= ((cols - cx) / rx) ** 2 + ((rows - cy) / ry) ** 2 <= 1
+hull &= fg
+leaf = fg & (g_ > r_ + 9) & (g_ >= b_ - 6) & (Mg > 20)                  # teal fern leaflets
+rockcol = (b_ > g_ + 4) | (r_ > g_ + 3)                                # rock is navy-purple or warm-rimmed; fern is teal or green-black
+over = hull & (~rockcol | leaf)
+over = nd.binary_closing(over, iterations=1) & hull                    # fronds in front of a rock: these sway, the rock behind them is filled in
+rocks = hull & ~over
 sway = fg & ~rocks
 np.save('fg.npy', fg); np.save('sway.npy', sway); np.save('rocks.npy', rocks)
 
@@ -93,20 +99,45 @@ for c in range(3):                                                      # match 
     ma = nd.gaussian_filter(np.where(keep, BG[..., c], 0), s) / np.maximum(nd.gaussian_filter(w, s), 1e-3)
     BG[..., c] = BG[..., c] - ma + mm
 BG = np.clip(BG, 0, 255)
-hull = nd.binary_fill_holes(nd.binary_closing(rocks, iterations=6))
 _, (iy, ix) = nd.distance_transform_edt(~rocks, return_indices=True)
-BG = np.where((hull & ~rocks)[..., None], M[iy, ix], BG)
+# behind the fronds each rock carries on in its own colours: per row, the rock's visible colour there, with its texture borrowed from beside it
+for cx, cy, rx, ry in ROCKS:
+    e = (((cols - cx) / rx) ** 2 + ((rows - cy) / ry) ** 2 <= 1) & hull
+    vis = e & ~over; hid = e & over
+    if not hid.any() or vis.sum() < 50: continue
+    ys = np.arange(H); prof = np.full((H, 3), np.nan)
+    for y in np.where(e.any(1))[0]:
+        xs = np.where(vis[y] & (b_[y] > g_[y] + 5) & (r_[y] >= g_[y] - 3))[0]   # clearly rock-coloured (navy or purple)
+        if len(xs) >= 3: prof[y] = np.median(M[y, xs], 0)
+    ok = ~np.isnan(prof[:, 0]); yk = np.where(ok)[0]
+    if len(yk) < 2: continue
+    for c in range(3): prof[:, c] = np.interp(ys, yk, prof[yk, c])
+    prof = np.stack([nd.gaussian_filter1d(prof[:, c], 3) for c in range(3)], -1)
+    tex = M - np.stack([nd.gaussian_filter(M[..., c], 3) for c in range(3)], -1)   # the rock's fine grain
+    good = vis & (b_ > g_ + 5) & (r_ >= g_ - 3)
+    _, (ty, tx) = nd.distance_transform_edt(~good, return_indices=True)
+    below = np.clip((rows - yk.max()) / 40., 0, 1)[..., None]           # below the last visible row it darkens into shadow
+    fill = (prof[rows.repeat(W, 1)] * (1 - .45 * below)) + tex[ty, tx] * .6
+    BG = np.where(hid[..., None], np.clip(fill, 0, 255), BG)
 np.save('bg.npy', BG)
 
 # ---------- 4. what moves by colour cycling ----------
 base = np.where(sway[..., None], BG, M); B = base; r, gg, b = B[..., 0], B[..., 1], B[..., 2]; lum = g(B)
 blueish = (b > r + 25) & (lum > 105)
-fall1 = blueish & (cols > 1085) & (cols < 1260) & (rows > 80) & (rows < 600)
-fall2 = blueish & (cols > 1480) & (cols < 1535) & (rows > 45) & (rows < 545)
+# the falls: only pale falling water (the sky above the lip is a stronger, purer blue), connected to the body of the fall
+water = ((b > r + 40) & (b > 130) & ((b - gg) < 78) & ((gg - r) < 56)) | ((b > r + 15) & (lum > 150) & ((b - gg) < 70))   # falling water, white and darker streaks; not the sky (purer blue) or the cliff (greyer)
+def fall_of(x0, x1, y0, y1, seed_y):
+    m = water & (cols > x0) & (cols < x1) & (rows > y0) & (rows < y1)
+    lab_, n_ = nd.label(m); ids = np.unique(lab_[seed_y - 40:seed_y + 40][m[seed_y - 40:seed_y + 40]])
+    m = np.isin(lab_, ids[ids > 0])
+    lip = np.where(m.any(0), m.argmax(0), H)                              # the top of the water in each column
+    return m, lip
+fall1, lip1 = fall_of(1085, 1260, 88, 600, 380)   # the lip of the main fall is at about y 90; the trees above it stay still
+fall2, lip2 = fall_of(1480, 1535, 40, 545, 380)
 foam = (lum > 150) & (np.abs(r - b) < 70) & (cols > 1000) & (cols < 1340) & (rows >= 560) & (rows < 655) & ~fall1
-pool = (rows >= 645) & (b > r + 8) & ~fg & ~foam & (lum > 40)
+pool = (rows >= 645) & (b > r + 8) & ~(fg & ~sway) & ~foam & (lum > 40)
 streak = pool & (cols > 1080) & (cols < 1280) & (lum > 120)
-np.savez('masks.npz', fall1=fall1, fall2=fall2, foam=foam, pool=pool, streak=streak)
+np.savez('masks.npz', fall1=fall1, fall2=fall2, lip1=lip1, lip2=lip2, foam=foam, pool=pool, streak=streak)
 for k, m in dict(fall1=fall1, fall2=fall2, foam=foam, pool=pool, streak=streak, fg=fg, sway=sway).items(): print(k, int(m.sum()))
 v = np.where(fg[..., None], np.where(sway[..., None], M, M * .5 + [80, 0, 0]), [255, 0, 255]).astype(np.uint8)[560:]
 Image.fromarray(v).resize((836, 190)).save('shots/check_fg.png')
