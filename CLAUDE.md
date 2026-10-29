@@ -1,6 +1,6 @@
 # Hideout Journal
 
-A calm journaling web app. The default backdrop is **the stream**: a 3D golden-hour valley (three.js) shown as a postcard on a white page. The original early-90s Amiga-style pixel-art river camp with a retro van is still there as a choice in Settings > Scene. You write (or talk), save the entry, and it shows up in Journal (formerly Memories), Patterns (mood over time) and Tasks. Everything runs in the browser; entries live in localStorage under `talio-home-v1` (the old working name was Talio). There is no backend yet.
+A calm journaling web app. The default backdrop is **the meadow**: a pixel-art golden-hour meadow with snowy peaks, gently animated, shown as a postcard on a white page. The early-90s Amiga-style pixel-art river camp with a retro van and **the stream** (a 3D golden-hour valley, three.js) are the other choices in Settings > Scene. You write (or talk), save the entry, and it shows up in Journal (formerly Memories), Patterns (mood over time) and Tasks. Everything runs in the browser; entries live in localStorage under `talio-home-v1` (the old working name was Talio). There is no backend yet.
 
 The owner is Kyoto88. They are a designer, not an engineer: explain choices in plain words, show screenshots of visual changes, and ask before big design decisions. **Ask permission before implementing, writing code, or doing work that uses credits; answer questions without starting to build.** They like a minimal, icon-led, calm UI.
 
@@ -19,12 +19,20 @@ python3 build.py              # → index.html (~12.8 MB, all art and sound inli
 
 `build.py` runs `src/assemble.py`, which writes `build/fragment.html` and then runs each pass over it, in this order:
 
-theme → journal → burn → bundle → sound → van → safety → patterns → field → write → card → voice → tasks → stream3d → postcard
+theme → journal → burn → bundle → sound → van → safety → patterns → field → write → card → voice → tasks → stream3d → postcard → meadow
 
 - `assemble.py` combines the base app (`assets/talio-home-v6-3d.html`, the older UI) with the 2D scene engine (`src/scene2d.js`) and inlines the art.
 - Each pass is a Python script `python3 src/<pass>.py in out` that patches the HTML with `rep(a, b, n=1)`. `rep` **asserts the exact number of matches** and exits on a mismatch, so an earlier pass changing a string breaks a later pass loudly. That's on purpose. When you change a pass, keep later passes' anchors intact, or update them.
-- Later passes patch the output of earlier ones, so the newest behaviour of a feature is often in a later file (the writing card: write.py then card.py; voice: voice.py replaces LiveTranscriber; the stream: stream3d.py; the camp's postcard layout: postcard.py, which is last).
+- Later passes patch the output of earlier ones, so the newest behaviour of a feature is often in a later file (the writing card: write.py then card.py; voice: voice.py replaces LiveTranscriber; the stream: stream3d.py; the camp's postcard layout: postcard.py; the meadow: meadow.py, which is last).
 - New work: edit the pass that owns the feature, or add a new pass at the end of the list in `assemble.py`. Keep the docstring at the top of each pass describing what it changes and why.
+
+### The meadow (2D, default)
+
+- `src/meadow.py` (last pass) adds Settings > Scene's three choices (The meadow / River camp / The stream; `body[data-scene]` meadow|camp|stream, default meadow) and injects `src/meadow.js`. The meadow uses the camp's postcard layout from `postcard.py` (`pcOn()` covers both 2D scenes), its own caption (`MEADOW_CAP`), and the burn opens in its card on wider screens. It starts the first time it shows (`startMeadow()`) and only draws while it's showing; the camp sleeps while it shows. Dev hook: `__meadow.t(seconds)` jumps the scene's clock.
+- `src/meadow.js` is generated: `tools/meadow/prep.py` + `build_page.py` from `assets/meadow/master.png` (the picture) and `clean.png` (the same scene without the foreground grass and clouds; slightly redrawn, so it's aligned tile by tile and colour-matched). Run them in a working folder outside the repo (see the docstring), then copy `meadow.js` to `src/` and build.
+- What moves: the foreground grass and ferns (cut pixel-exact from the master; each column bends from its roots, tips most, snapped to 2 px, 7 fps; never whole rows shifting, which read as "scanning"); 4 clouds drifting right over the clean sky, coming back from behind the pine (the pine is its own top layer), 2–3 up at a time; colour cycling (no moving pixels) for soft bands on the meadow, the stream's glints and the waterfall; a gust every 8–15 s (the grass leans, a bright sunray band sweeps the meadow, a few golden seed specks drift); now and then a small flock (behind the pine) or a butterfly or two by the grass, one at a time. A hawk was tried and removed (it read as a drone).
+- The camp's Pixel Tuner look is applied to every frame: the tune settings, 80 fixed colours, a Bayer 4×4 dither locked to the screen (so it never crawls), the camp's glow (.4) and vignette (.8). It draws a 952×536 canvas, shown nearest-neighbour.
+- It adds about 6 MB to `index.html` (the page is ~20 MB).
 
 ### The stream (3D)
 
@@ -56,7 +64,7 @@ theme → journal → burn → bundle → sound → van → safety → patterns 
 
 ## Decisions already made (don't undo without asking)
 
-- The river camp is the default scene again (Settings > Scene; the stream is the other choice, golden hour only for now, its composition following Kyoto88's reference, see the Composition note above).
+- The meadow is the default scene (Settings > Scene: The meadow, River camp, The stream). The stream is golden hour only for now, its composition following Kyoto88's reference (see the Composition note above).
 - Both scenes show as a postcard on the light page by default: deckled edge, caption under it, header above, journal field below; on that page the header and field never rest away when idle. The Postcard switch off gives the old full-screen look (the camp's dark glass UI that rests when idle).
 - Header: the logo top left; one menu in the middle (Journal, Tasks, Settings); the volume icon (on/off) far right. Logo colours: both words red, trees green, river blue.
 - Writing happens in place: the bottom field expands into the journal card.
