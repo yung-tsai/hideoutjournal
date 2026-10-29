@@ -1,3 +1,4 @@
 *.npy
 shots/
 __pycache__/
+*.npz
