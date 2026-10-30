@@ -870,7 +870,7 @@ body.sbinit .sheet{transition:none!important}
 @media (min-width:761px){
 body[data-frame="postcard"] :is(#meadow,#waterfall,#desert,#stage,#scnav){translate:var(--shx,0px) 0;scale:var(--shk,1);transition:translate .55s cubic-bezier(.2,.8,.2,1),scale .55s cubic-bezier(.2,.8,.2,1)}
 body[data-frame="postcard"] .dock{transform:translateX(-50%) translateY(var(--dock-y,0px));translate:var(--shx,0px) 0;scale:var(--shk,1);transform-origin:50% 100%;
-  transition:opacity .7s ease,transform .8s cubic-bezier(.2,.8,.2,1),translate .55s cubic-bezier(.2,.8,.2,1),scale .55s cubic-bezier(.2,.8,.2,1)}
+  transition:opacity .7s ease,transform .8s cubic-bezier(.2,.8,.2,1),translate .55s cubic-bezier(.2,.8,.2,1),scale .55s cubic-bezier(.2,.8,.2,1),bottom .45s cubic-bezier(.2,.8,.2,1)}
 body[data-frame="postcard"] .scdots{translate:var(--shx,0px) var(--shdy,0px);transition:opacity .35s ease,translate .55s cubic-bezier(.2,.8,.2,1)}}
 /* ---------- the scene switcher ---------- */
 .scnav{position:fixed;inset:0;z-index:4;pointer-events:none}
@@ -893,6 +893,9 @@ body[data-focus="journal"] .scnav,body[data-focus="journal"] .scdots{display:non
 .scsnap{position:fixed;z-index:3;pointer-events:none;image-rendering:pixelated;opacity:1;transition:opacity .6s ease}
 @media (hover:none){.scgo{display:none}}
 
+/* ---------- the field under the card; the wordmark a little lower ---------- */
+body[data-frame="postcard"] .dock{bottom:calc(var(--dock-b,26px) + var(--sa-b,0px))}
+.top .wmark{margin-top:9px}
 /* ---------- scene frames ---------- */
 .pcfx{position:fixed;pointer-events:none;display:none;left:calc(var(--pc-left,0px) - var(--pcm,0px));top:calc(var(--pc-top,84px) - var(--pcm,0px));
   width:calc(var(--pc-w,952px) + 2*var(--pcm,0px));height:calc(var(--pc-h,536px) + 2*var(--pcm,0px))}
@@ -2133,6 +2136,14 @@ setTimeout(()=>{if(state.meta.framesSeen==null){frameCheck();state.meta.framesSe
 (function(){const b=document.createElement('div');b.id='pcBack';b.className='pcfx';document.body.prepend(b);
   const f=document.createElement('div');f.id='pcFront';f.className='pcfx';$('#scnav').before(f);document.body.dataset.pcf=frameOn()})();
 $('#setFrame').addEventListener('click',()=>setTimeout(()=>{frameKey='';if(typeof size==='function')size()},0));
+/* the field sits a short way under the card (the expanded writing card keeps its own place) */
+function dockLift(){const B=document.body,R=document.documentElement.style,d=$('#dock');if(B.dataset.frame!=='postcard'||!d){R.removeProperty('--dock-b');return}
+  const cs=getComputedStyle(document.documentElement),px=v=>parseFloat(cs.getPropertyValue(v))||0,k=px('--shk')||1,top=px('--pc-top'),h=px('--pc-h'),ft=px('--pcft');if(!h)return;
+  const cardBottom=top+h/2+(h/2+ft)*k,want=innerHeight-(cardBottom+46*k)-d.offsetHeight*k,base=26;
+  R.setProperty('--dock-b',Math.max(base,Math.round(want))+'px')}
+{const _ps=pcShift;pcShift=function(){_ps();dockLift()}}
+if(window.ResizeObserver)new ResizeObserver(()=>dockLift()).observe($('#dock'));
+setTimeout(dockLift,0);
 window.__frames={set:k=>{state.settings.pcFrame=k;persist();applyFrame()},testAll:on=>{FRAMES_TEST_ALL=on!==false;applyFrame()}};
 let meadowOn=false;
 function startMeadow(){if(meadowOn||!window.MeadowScene)return;meadowOn=true;

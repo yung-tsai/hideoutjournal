@@ -6,6 +6,7 @@
      in code, SVG or a pixel-aligned canvas, so it's crisp at any size. #pcBack (under the scene) holds shadows and stamp paper,
      #pcFront (over it) holds bezels, rivets, sketch lines and Dreamy's dither.
    - Locked frames show faded with a quiet "After N entries". When one opens, a short note waits in Settings the next time it's opened.
+   - The field sits a short way under the card (dockLift; the expanded writing card keeps its place); the wordmark sits a little lower.
    - FRAMES_TEST_ALL unlocks every frame (off). Dev hook: __frames.set(k), __frames.testAll(on).
    python3 frames.py <in.html> <out.html>"""
 import sys
@@ -159,11 +160,25 @@ setTimeout(()=>{if(state.meta.framesSeen==null){frameCheck();state.meta.framesSe
 (function(){const b=document.createElement('div');b.id='pcBack';b.className='pcfx';document.body.prepend(b);
   const f=document.createElement('div');f.id='pcFront';f.className='pcfx';$('#scnav').before(f);document.body.dataset.pcf=frameOn()})();
 $('#setFrame').addEventListener('click',()=>setTimeout(()=>{frameKey='';if(typeof size==='function')size()},0));
+/* the field sits a short way under the card (the expanded writing card keeps its own place) */
+function dockLift(){const B=document.body,R=document.documentElement.style,d=$('#dock');if(B.dataset.frame!=='postcard'||!d){R.removeProperty('--dock-b');return}
+  const cs=getComputedStyle(document.documentElement),px=v=>parseFloat(cs.getPropertyValue(v))||0,k=px('--shk')||1,top=px('--pc-top'),h=px('--pc-h'),ft=px('--pcft');if(!h)return;
+  const cardBottom=top+h/2+(h/2+ft)*k,want=innerHeight-(cardBottom+46*k)-d.offsetHeight*k,base=26;
+  R.setProperty('--dock-b',Math.max(base,Math.round(want))+'px')}
+{const _ps=pcShift;pcShift=function(){_ps();dockLift()}}
+if(window.ResizeObserver)new ResizeObserver(()=>dockLift()).observe($('#dock'));
+setTimeout(dockLift,0);
 window.__frames={set:k=>{state.settings.pcFrame=k;persist();applyFrame()},testAll:on=>{FRAMES_TEST_ALL=on!==false;applyFrame()}};
 let meadowOn=false;""")
 
+rep('transition:opacity .7s ease,transform .8s cubic-bezier(.2,.8,.2,1),translate .55s cubic-bezier(.2,.8,.2,1),scale .55s cubic-bezier(.2,.8,.2,1)}',
+    'transition:opacity .7s ease,transform .8s cubic-bezier(.2,.8,.2,1),translate .55s cubic-bezier(.2,.8,.2,1),scale .55s cubic-bezier(.2,.8,.2,1),bottom .45s cubic-bezier(.2,.8,.2,1)}')   # the field glides when the card moves
+
 # ---------- styles ----------
 rep('</style>', """
+/* ---------- the field under the card; the wordmark a little lower ---------- */
+body[data-frame="postcard"] .dock{bottom:calc(var(--dock-b,26px) + var(--sa-b,0px))}
+.top .wmark{margin-top:9px}
 /* ---------- scene frames ---------- */
 .pcfx{position:fixed;pointer-events:none;display:none;left:calc(var(--pc-left,0px) - var(--pcm,0px));top:calc(var(--pc-top,84px) - var(--pcm,0px));
   width:calc(var(--pc-w,952px) + 2*var(--pcm,0px));height:calc(var(--pc-h,536px) + 2*var(--pcm,0px))}
