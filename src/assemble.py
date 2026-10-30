@@ -132,7 +132,7 @@ app = rep(app, "function resolveWorld(){ST.time=state.dev.time==='auto'?clockTim
           "function resolveWorld(){const t=state.dev.time;ST.time=t==='auto'||!TIME_LABEL[t]?clockTime():t;ST.weather='clear'}   // weather is paused for now")
 app = rep(app, "$('#place').textContent='Pond retreat · '+", "$('#place').textContent='River camp · '+")
 app = rep(app, "a little RV parked by a pond, away from the noise", "a little camper van parked by a river in the woods, away from the noise")
-app = rep(app, "Talk or write from the RV, and each entry", "Talk or write from the van, and each entry")
+app = rep(app, "<strong>Your memories will live here.</strong>Talk or write from the RV, and each entry you save appears in this timeline.", "Your entries will appear here as you write.")
 app = rep(app, '''${e.world?`<h4 class="dh">At the retreat</h4><p class="dctx">${esc(TIME_LABEL[e.world.time]||'')} · ${esc(e.world.weather==='clear'?'Clear skies':WX_LABEL[e.world.weather]||'')}, from the window seat</p>`:''}''',
           '''${e.world?`<h4 class="dh">At camp</h4><p class="dctx">${esc(TIME_LABEL[e.world.time]||'')} by the river</p>`:''}''')
 # RV catalog: the van is part of the painting for now; keep the structure, empty the options
@@ -236,4 +236,6 @@ subprocess.run(['python3',HERE+'postcard.py',OUT,OUT],check=True)
 subprocess.run(['python3',HERE+'meadow.py',OUT,OUT],check=True)
 subprocess.run(['python3',HERE+'waterfall.py',OUT,OUT],check=True)
 subprocess.run(['python3',HERE+'desert.py',OUT,OUT],check=True)
+subprocess.run(['python3',HERE+'refresh.py',OUT,OUT],check=True)
+subprocess.run(['python3',HERE+'nav.py',OUT,OUT],check=True)
 print('ok', len(out))

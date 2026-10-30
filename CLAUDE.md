@@ -19,7 +19,10 @@ python3 build.py              # → index.html (~12.8 MB, all art and sound inli
 
 `build.py` runs `src/assemble.py`, which writes `build/fragment.html` and then runs each pass over it, in this order:
 
-theme → journal → burn → bundle → sound → safety → patterns → field → write → card → voice → tasks → stream3d → postcard → meadow → waterfall → desert
+theme → journal → burn → bundle → sound → safety → patterns → field → write → card → voice → tasks → stream3d → postcard → meadow → waterfall → desert → refresh → nav
+
+- `refresh.py`: the light UI refresh (green tokens, red only in the logo; menu icon / wordmark from `assets/logo/hideout_wordmark_clean.svg` / volume; Journal cards with scene thumbnails; Settings Scene picker with thumbnails).
+- `nav.py` (last): one left sidebar, opened by the menu icon (Journal | Tasks segmented control and a Settings gear in its top row; last page in `state.meta.lastPage`; on desktop the postcard, field and logo slide right and scale down if needed via `pcShift()`; full screen on phones); the scene caption is hidden; the scene switcher (chevrons on hover inside the frame, dots under it, arrow keys when not typing, swipe on phones; a still of the old scene fades out over the new one).
 
 - `assemble.py` combines the base app (`assets/talio-home-v6-3d.html`, the older UI) with the 2D scene engine (`src/scene2d.js`) and inlines the art.
 - Each pass is a Python script `python3 src/<pass>.py in out` that patches the HTML with `rep(a, b, n=1)`. `rep` **asserts the exact number of matches** and exits on a mismatch, so an earlier pass changing a string breaks a later pass loudly. That's on purpose. When you change a pass, keep later passes' anchors intact, or update them.
@@ -83,7 +86,7 @@ theme → journal → burn → bundle → sound → safety → patterns → fiel
 
 - The meadow is the default scene (Settings > Scene: The meadow, River camp, The waterfall, The desert). The stream was removed from the list; anyone who had it saved gets the meadow. The stream is golden hour only for now, its composition following Kyoto88's reference (see the Composition note above).
 - Both scenes show as a postcard on the light page by default: deckled edge, caption under it, header above, journal field below; on that page the header and field never rest away when idle. The Postcard switch off gives the old full-screen look (the camp's dark glass UI that rests when idle).
-- Header: the logo top left; one menu in the middle (Journal, Tasks, Settings); the volume icon (on/off) far right. Logo colours: both words red, trees green, river blue.
+- Header: the menu icon top left (opens the sidebar), the red Hideout wordmark centred, the volume icon (on/off) far right.
 - Writing happens in place: the bottom field expands into the journal card.
 - Writing card: one question at a time. It opens on "How are you feeling?"; picking a mood swaps in a question for that mood (low/frustrated → "What would make today feel good?"). A small round-arrow icon shuffles questions. The question is saved with the entry (`prompt`). No placeholder text, just the cursor.
 - Finish row: mic, then a split button `Save ▾` whose menu has "Reflect on it" and "Burn it". Tapping outside the card folds it back into the field (the draft is kept).

@@ -1,6 +1,6 @@
 """Drive the built index.html in a headless browser and take screenshots.
    pip install playwright && python3 -m playwright install chromium
-   python3 tools/test.py desk|phone '<steps json>' tag
+   python3 tools/test.py desk|laptop|phone '<steps json>' tag
    steps: ["js","code"] ["wait",ms] ["waitfn","js condition"] ["click","css"] ["rclick","css"] (a real click)
           ["fill","css","text"] ["key","Enter"] ["hover","css"] ["shot","name"]  -> build/shots/<tag>_<size>_<name>.png
    e.g. python3 tools/test.py desk '[["wait",4000],["shot","home"]]' check"""
@@ -8,7 +8,7 @@ import sys, json, os, threading, http.server, functools
 from playwright.sync_api import sync_playwright
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 size = sys.argv[1]; steps = json.loads(sys.argv[2]); tag = sys.argv[3]
-dims = {'desk': (1440, 900, 1), 'phone': (390, 844, 2)}[size]
+dims = {'desk': (1440, 900, 1), 'laptop': (1180, 760, 2), 'phone': (390, 844, 2)}[size]
 os.makedirs(os.path.join(ROOT, 'build', 'shots'), exist_ok=True)
 # serve over http: ES modules (the 3D scene) don't load from file://
 srv = http.server.ThreadingHTTPServer(('127.0.0.1', 0), functools.partial(http.server.SimpleHTTPRequestHandler, directory=ROOT))
