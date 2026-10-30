@@ -155,7 +155,7 @@ $('#setFrameKind').addEventListener('click',e=>{const b=e.target.closest('.frb')
     frameNoteTxt=fresh.length?(fresh.length===1?`A new frame is ready: ${fresh[0].l}.`:`New frames are ready: ${fresh.map(f=>f.l).join(', ')}.`):'';
     if(fresh.length){fresh.forEach(f=>seen.push(f.k));persist()}}
   _o(nm)}}
-if(state.meta.framesSeen==null){frameCheck();state.meta.framesSeen=(state.meta.framesUnlocked||[]).slice();persist()}   // frames earned before this existed: open, without a note
+setTimeout(()=>{if(state.meta.framesSeen==null){frameCheck();state.meta.framesSeen=(state.meta.framesUnlocked||[]).slice();persist()}},0);   // frames earned before this existed: open, without a note
 (function(){const b=document.createElement('div');b.id='pcBack';b.className='pcfx';document.body.prepend(b);
   const f=document.createElement('div');f.id='pcFront';f.className='pcfx';$('#scnav').before(f);document.body.dataset.pcf=frameOn()})();
 $('#setFrame').addEventListener('click',()=>setTimeout(()=>{frameKey='';if(typeof size==='function')size()},0));

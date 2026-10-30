@@ -109,7 +109,7 @@ addEventListener('hashchange',route);
 $$('#sb .sbi[data-act]').forEach(b=>b.addEventListener('click',()=>{const a=b.dataset.act;go(a==='home'?'':a)}));
 $('.wmark').addEventListener('click',()=>go(''));
 setTimeout(route,0);
-renderSb(true);
+setTimeout(()=>renderSb(true),0);   // after the rest of the app has loaded (MOODS, page)
 /* ---------- the scene switcher: chevrons on hover, dots under the card, arrow keys, swipes ---------- */
 const SCENES=['meadow','camp','waterfall','desert'],SC_LAYER={meadow:'#meadow',camp:'#stage',waterfall:'#waterfall',desert:'#desert'};
 const curScene=()=>{const v=document.body.dataset.scene;return SCENES.includes(v)?v:'meadow'};
