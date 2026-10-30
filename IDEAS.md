@@ -27,3 +27,7 @@ Restore from tag `van-upgrades-v1`.
 ## Weather for mood
 
 Replace the Journal's thumbnails with small animated pixel weather icons, one per mood: sun = happy, rain = sad, storm = frustrated, moon = tired, fog = anxious, and so on.
+
+## Dark mode
+
+Dark mode, later, paired with the night versions of the scenes.
