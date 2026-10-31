@@ -2,6 +2,7 @@
    - Titles: without Claude (which the live site can't reach yet), an entry is titled with its own first few words
      ("Walked to the bakery with Sam"), or the day and time of day when it's too short ("Saturday morning"). No more
      titles made from a mood word plus a topic ("A rough day at work"), which looked like the demo entries'.
+   - Once, titles the old rules made up on unedited entries are redone the same way (the old ones kept in hideout-titles-before-v2).
    - Mood: the mood you picked at "How are you feeling?" wins over the guessed one, on Save and on Reflect.
    - Demo data lives in its own store (hideout-demo-v1), switched on from the Dev page ("Try demo data"); the app then
      shows only demo entries, with a "Demo data" chip, and your journal (talio-home-v1) isn't touched at all. "Back to my
@@ -70,6 +71,11 @@ setTimeout(()=>{let changed=false;
   else{const out=state.entries.filter(e=>e&&e.demo);if(out.length){const gone=new Set(out.map(e=>e.id)),only=t=>Array.isArray(t.sources)&&t.sources.length&&t.sources.every(x=>gone.has(x.entryId));
       try{localStorage.setItem('hideout-demo-moved-v1',JSON.stringify({at:Date.now(),entries:out,tasks:state.tasks.filter(only)}))}catch(_){}
       state.entries=state.entries.filter(e=>!e.demo);state.tasks=state.tasks.filter(t=>!only(t));changed=true}}
+  if(!DEMO_MODE&&!state.meta.titlesV2){   // once: titles the old rules made up (a mood word plus a topic) become the entry's own first words
+    const OLD=/^(?:(?:A quiet|An ordinary|A heavy|A rough|A good) (?:day (?:at work|with family|with friends|outside)|morning|afternoon|evening|night)|A rough start, a better end|A hard moment)$/,was={};
+    for(const e of state.entries)if(e&&!e.editedAt&&e.reflectedBy!=='claude'&&OLD.test(e.title||'')){was[e.id]=e.title;e.title=plainTitle(e.body,new Date(e.at))}
+    if(Object.keys(was).length)try{localStorage.setItem('hideout-titles-before-v2',JSON.stringify(was))}catch(_){}
+    state.meta.titlesV2=true;changed=true}
   if(changed){persist();updateDock();if(typeof renderSb==='function')renderSb(true);if(page)openPage(page);renderDev()}},0);
 if(window.__talio)window.__talio.loadDemo=()=>demoSwitch(true);
 let meadowOn=false;""")

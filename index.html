@@ -2224,6 +2224,11 @@ setTimeout(()=>{let changed=false;
   else{const out=state.entries.filter(e=>e&&e.demo);if(out.length){const gone=new Set(out.map(e=>e.id)),only=t=>Array.isArray(t.sources)&&t.sources.length&&t.sources.every(x=>gone.has(x.entryId));
       try{localStorage.setItem('hideout-demo-moved-v1',JSON.stringify({at:Date.now(),entries:out,tasks:state.tasks.filter(only)}))}catch(_){}
       state.entries=state.entries.filter(e=>!e.demo);state.tasks=state.tasks.filter(t=>!only(t));changed=true}}
+  if(!DEMO_MODE&&!state.meta.titlesV2){   // once: titles the old rules made up (a mood word plus a topic) become the entry's own first words
+    const OLD=/^(?:(?:A quiet|An ordinary|A heavy|A rough|A good) (?:day (?:at work|with family|with friends|outside)|morning|afternoon|evening|night)|A rough start, a better end|A hard moment)$/,was={};
+    for(const e of state.entries)if(e&&!e.editedAt&&e.reflectedBy!=='claude'&&OLD.test(e.title||'')){was[e.id]=e.title;e.title=plainTitle(e.body,new Date(e.at))}
+    if(Object.keys(was).length)try{localStorage.setItem('hideout-titles-before-v2',JSON.stringify(was))}catch(_){}
+    state.meta.titlesV2=true;changed=true}
   if(changed){persist();updateDock();if(typeof renderSb==='function')renderSb(true);if(page)openPage(page);renderDev()}},0);
 if(window.__talio)window.__talio.loadDemo=()=>demoSwitch(true);
 let meadowOn=false;
