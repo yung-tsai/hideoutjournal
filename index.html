@@ -941,6 +941,16 @@ body[data-sheet] .top .wmark{opacity:0;pointer-events:none}
 /* ---------- ?record ---------- */
 body[data-record] #sb [data-act="dev"],body[data-record] .top .wmark,body[data-record] #devChip{display:none!important}
 body[data-record][data-nocur],body[data-record][data-nocur] *{cursor:none!important}
+
+/* ---------- the entry page; demo data ---------- */
+#detailBody .dprompt{margin:18px 0 6px;font:italic 400 14.5px/1.45 var(--serif);color:var(--ink-3)}
+#detailBody .dtitle+.dbody{margin-top:14px}
+.demochip{position:fixed;left:50%;bottom:calc(10px + var(--sa-b,0px));transform:translateX(-50%);z-index:30;display:flex;align-items:center;gap:10px;
+  padding:6px 8px 6px 12px;border:1px solid var(--line-2);border-radius:999px;background:#fff8e6;color:#7a5b16;font:600 11.5px/1 var(--ui);letter-spacing:.06em;text-transform:uppercase;cursor:pointer;box-shadow:var(--shadow-s)}
+.demochip span{padding:5px 9px;border-radius:999px;background:#fff;color:var(--ink);font:500 12px/1 var(--ui);letter-spacing:0;text-transform:none}
+body[data-record] .demochip{display:none}
+#pg-dev .devfix ul{margin:6px 0 10px;padding:0 0 0 18px;font:400 13px/1.6 var(--ui);color:var(--ink-2)}
+#pg-dev .devfix li span{color:var(--ink-3)}
 </style>
 
 <div id="scene3d" aria-hidden="true"></div>
@@ -1880,7 +1890,8 @@ const LOCK_SVG='<svg viewBox="0 0 12 12" fill="none" stroke="currentColor" strok
 const osReduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 /* ---------- store (this browser only) ---------- */
-const STORE='talio-home-v1';
+const DEMO_MODE=(()=>{try{return localStorage.getItem('hideout-demo-mode')==='1'}catch(e){return false}})();
+const STORE=DEMO_MODE?'hideout-demo-v1':'talio-home-v1';   // demo data never shares a store with your journal
 function defaults(){return{v:1,entries:[],tasks:[],
   settings:{reflectionStyle:'curious',defaultInput:'write',sound:false,reducedMotion:osReduced,volume:80,volWater:100,volBirds:100,writeWhere:'out'},
   rv:{equipped:{exterior:{paint:'classic',awning:'none',roof:'none',detail:'none'},interior:{}},seen:[],announced:[]},
@@ -2186,6 +2197,35 @@ $('#sbMark').addEventListener('click',()=>go(''));
   addEventListener('hashchange',wake);
   new MutationObserver(()=>{if(B.dataset.hidle&&!calm())wake()}).observe(B,{attributes:true,attributeFilter:['data-sheet','data-focus','data-sb']});
   wake()})();
+/* ---------- honest titles; demo data kept apart ---------- */
+function plainTitle(text,when){when=when||new Date();const h=when.getHours(),per=h>=5&&h<12?'morning':h>=12&&h<17?'afternoon':h>=17&&h<22?'evening':'night';
+  const first=String(text||'').trim().split(/[.!?;:\n—–]|,\s/)[0].replace(/^(?:so|um+|uh+|okay|ok|well|honestly|anyway|yeah)\b[,\s]*/i,'').trim();
+  const w=first.split(/\s+/).filter(Boolean).slice(0,7);
+  while(w.length>2&&/^(?:and|but|or|the|a|an|to|of|with|after|for|at|in|on|my|our|so|that|is|was|this|just|really|some)$/i.test(w[w.length-1]))w.pop();
+  if(w.length<2)return when.toLocaleDateString(undefined,{weekday:'long'})+' '+per;
+  const t=w.join(' ').replace(/[,\s]+$/,'');return t.charAt(0).toUpperCase()+t.slice(1)}
+function demoSwitch(on){persist();try{if(on)localStorage.setItem('hideout-demo-mode','1');else localStorage.removeItem('hideout-demo-mode')}catch(_){}location.reload()}
+function demoClear(){const b=$('#devDemoClear');if(b&&b.dataset.arm!=='1'){b.dataset.arm='1';b.textContent='Tap again to clear demo data';return}
+  try{localStorage.removeItem('hideout-demo-v1');localStorage.removeItem('hideout-demo-moved-v1')}catch(_){}
+  if(DEMO_MODE){try{localStorage.removeItem('hideout-demo-mode')}catch(_){}location.reload();return}
+  if(b){b.dataset.arm='';b.textContent='Demo data cleared'}}
+const DEMO_DOWN={happy:'calm',calm:'okay',okay:'low',low:'low',frustrated:'frustrated'};
+function inventedCheckins(){return DEMO_MODE?[]:state.entries.filter(e=>e&&!e.demo&&e.moodAfter&&e.moodBefore&&e.moodAfter===e.mood&&(e.moodBefore===e.mood||e.moodBefore===DEMO_DOWN[e.mood]))}
+{const _rd=renderDev;renderDev=function(){_rd();const host=$('#devP');if(!host||DEMO_MODE)return;const list=inventedCheckins();
+  const d=document.createElement('div');d.className='devfix';
+  d.innerHTML=`<h4>Check-ins to review</h4>`+(list.length?`<p>Loading demo data used to add made-up before/after moods to real entries. ${list.length===1?'This one looks':'These '+list.length+' look'} like that (the after mood matches the guessed one). Some could be real.</p><ul>${list.map(e=>`<li>${esc(fDay.format(new Date(e.at)))} · ${esc(e.title||'')} <span>before ${esc(e.moodBefore)}, after ${esc(e.moodAfter)}</span></li>`).join('')}</ul><div class="dseg"><button type="button" id="devFixCk">Clear these check-ins</button></div>`:'<p>Nothing to review.</p>');
+  host.appendChild(d);const fb=$('#devFixCk');if(fb)fb.addEventListener('click',()=>{if(fb.dataset.arm!=='1'){fb.dataset.arm='1';fb.textContent='Tap again to clear';return}
+    for(const e of inventedCheckins()){e.moodBefore=null;e.moodAfter=null;e.feelBefore=null;e.feelAfter=null}persist();renderDev()})}}
+setTimeout(()=>{let changed=false;
+  if(DEMO_MODE){if(!state.meta.demoMade){try{const real=JSON.parse(localStorage.getItem('talio-home-v1')||'null');if(real&&real.settings)state.settings={...state.settings,...real.settings}}catch(_){}
+      state.meta.demoMade=true;loadDemo();changed=true}
+    state.entries.forEach(e=>{if(!e.demo){e.demo=true;changed=true}});
+    const c=document.createElement('button');c.type='button';c.className='demochip';c.innerHTML='Demo data<span>Back to my journal</span>';c.addEventListener('click',()=>demoSwitch(false));document.body.appendChild(c)}
+  else{const out=state.entries.filter(e=>e&&e.demo);if(out.length){const gone=new Set(out.map(e=>e.id)),only=t=>Array.isArray(t.sources)&&t.sources.length&&t.sources.every(x=>gone.has(x.entryId));
+      try{localStorage.setItem('hideout-demo-moved-v1',JSON.stringify({at:Date.now(),entries:out,tasks:state.tasks.filter(only)}))}catch(_){}
+      state.entries=state.entries.filter(e=>!e.demo);state.tasks=state.tasks.filter(t=>!only(t));changed=true}}
+  if(changed){persist();updateDock();if(typeof renderSb==='function')renderSb(true);if(page)openPage(page);renderDev()}},0);
+if(window.__talio)window.__talio.loadDemo=()=>demoSwitch(true);
 let meadowOn=false;
 function startMeadow(){if(meadowOn||!window.MeadowScene)return;meadowOn=true;
   window.__meadow=MeadowScene.start(document.getElementById('meadowCv'),()=>document.body.dataset.scene==='meadow'&&!document.hidden&&!document.body.dataset.sheet)}
@@ -2245,7 +2285,7 @@ const Reflector=(()=>{
   function analyze(text,o){
     const lower=text.toLowerCase(),wc=text.trim().split(/\s+/).filter(Boolean).length,when=new Date(o.at||Date.now()),per=period(when),talk=o.input==='talk';
     if(CONCERN.test(text)){ // a separate, quiet path: no cheerful title, no tasks, a pointer to real support
-      return{title:'A hard moment',mood:'low',concern:true,followUp:null,tasks:[],
+      return{title:plainTitle(text,when),mood:'low',concern:true,followUp:null,tasks:[],
         reflection:(talk?'That sounds really painful, and I’m glad you said it out loud instead of holding it alone.':'That sounds really painful, and I’m glad you wrote it down instead of holding it alone.')+(o.style==='minimal'?'':' You don’t have to work through this on your own. Reaching out to someone you trust, or to a support line, can help.')}}
     const sc={low:count(W.low,lower),frustrated:count(W.frustrated,lower),happy:count(W.happy,lower),calm:count(W.calm,lower)*.8};
     const neg=count(/\bnot (?:so |very |that |really )?(?:good|great|happy|fun|okay|ok)\b/g,lower);sc.happy-=neg*1.5;sc.low+=neg;
@@ -2253,8 +2293,7 @@ const Reflector=(()=>{
     let mood='okay',best=.5;for(const k of ['frustrated','low','happy','calm'])if(sc[k]>best){best=sc[k];mood=k}
     let topic=null,at=1e9;for(const t of TOPIC){const mm=lower.match(t[0]);if(mm&&mm.index<at){at=mm.index;topic=t}}
     const where=topic&&topic[1],what=topic&&topic[2],short=wc<8;
-    let title=topic&&topic[1]?`${ADJ[mood]} day ${where}`:`${ADJ[mood]} ${per}`;
-    if(turned&&(mood==='frustrated'||mood==='low'))title='A rough start, a better end';
+    let title=plainTitle(text,when);
     let r;
     if(mood==='frustrated')r=short?`Sounds like ${what||'today'} was a lot.`:turned?`Sounds like ${what||'the day'} took a lot of energy, and things eased up by the end.`:`Sounds like ${what||'today'} took a lot out of you. That’s a lot to carry.`;
     else if(mood==='low')r=short?'Sounds like today felt heavy.':turned?`It sounds like a heavy ${per} for a while, with something easing up later.`:`That sounds like a heavy ${per}. Thanks for setting some of it down here.`;
@@ -2524,11 +2563,11 @@ function renderDetail(e){
   const host=$('#detailBody'),d=new Date(e.at),tasks=entryTasks(e);
   host.innerHTML=`<div class="dmeta"><span>${esc(fFull.format(d))} · ${esc(fTime.format(d))}</span>${moodHTML(e)}${checkinHTML(e)}${e.editedAt?'<span>Edited</span>':''}${e.archived?'<span class="tag">Archived</span>':''}</div>
     <h3 class="dtitle">${esc(e.title)}</h3>
-    <h4 class="dh">${e.input==='talk'?'You said':'You wrote'}</h4>${e.prompt?`<p class="dq">${esc(e.prompt)}</p>`:''}<p class="dbody"></p>
+    ${e.prompt?`<p class="dq dprompt">${esc(e.prompt)}</p>`:''}<p class="dbody"></p>
     ${e.reflection?'<h4 class="dh">Reflection</h4><p class="drefl"></p>':''}
     ${(e.more||[]).map(m=>`<div class="dmore"><h4 class="dh">${m.input==='talk'?'You added, aloud':'You added'} · ${esc(fTime.format(new Date(m.at)))}</h4>${m.prompt?`<p class="dq">${esc(m.prompt)}</p>`:''}<p class="dbody"></p><p class="drefl"></p></div>`).join('')}
     ${tasks.length?'<h4 class="dh">Tasks</h4><ul class="tlist" id="dTasks"></ul>':''}
-    ${e.world?`<h4 class="dh">At camp</h4><p class="dctx">${esc(TIME_LABEL[e.world.time]||'')} by the river</p>`:''}
+    
     <div class="dact"><button class="btn small" type="button" id="dEdit">Edit</button><button class="btn small" type="button" id="dArch">${e.archived?'Unarchive':'Archive'}</button><button class="btn small danger" type="button" id="dDel">Delete</button></div>
     <div class="confirm" id="dConf" hidden><p></p><div class="row"><button class="btn small" type="button" id="dNo">Cancel</button><button class="btn small danger solid" type="button" id="dYes">Delete memory</button></div></div>`;
   $('.dbody',host).textContent=e.body;if(e.reflection)$('.drefl',host).textContent=e.reflection;
@@ -2753,9 +2792,9 @@ function keepGoing(){const e=session&&state.entries.find(x=>x.id===session.entry
 $('#jLeave').addEventListener('click',()=>{if(session&&session.kind==='write'&&!session.continued&&!session.entryId&&jcard.dataset.state==='write'){state.meta.draft=jText.value;persist()}leaveJournal(jcard.dataset.state==='saved')});
 function saveEntry(){const r=session.result,at=session.at||Date.now();
   const base=session.entryId&&state.entries.find(x=>x.id===session.entryId);
-  if(base){const m={at,input:session.kind,prompt:session.prompt||null,body:session.text,reflection:r.reflection,mood:r.mood,concern:!!r.concern,reflectedBy:r.source==='claude'?'claude':'local'};
+  if(base){const m={at,input:session.kind,prompt:session.prompt||null,body:session.text,reflection:r.reflection,mood:session.moodBefore||r.mood,concern:!!r.concern,reflectedBy:r.source==='claude'?'claude':'local'};
     (base.more=base.more||[]).push(m);if(r.concern)base.concern=true;addTasks(session.tasks.filter(t=>!t.removed).map(t=>t.text),{id:base.id,at});persist();return base}
-  const e={id:uid(),at,input:session.kind,prompt:session.prompt||null,title:r.title,body:session.text,reflection:r.reflection,mood:r.mood,moodBefore:session.moodBefore||null,feelBefore:session.feelBefore||null,moodAfter:null,feelAfter:null,concern:!!r.concern,archived:false,world:{time:ST.time,weather:ST.weather},reflectedBy:r.source==='claude'?'claude':'local'};
+  const e={id:uid(),at,input:session.kind,prompt:session.prompt||null,title:r.title,body:session.text,reflection:r.reflection,mood:session.moodBefore||r.mood,moodBefore:session.moodBefore||null,feelBefore:session.feelBefore||null,moodAfter:null,feelAfter:null,concern:!!r.concern,archived:false,world:{time:ST.time,weather:ST.weather},reflectedBy:r.source==='claude'?'claude':'local'};
   state.entries.unshift(e);addTasks(session.tasks.filter(t=>!t.removed).map(t=>t.text),e);
   state.meta.savedTotal+=1;state.meta.draft='';persist();return e}
 /* ---------- mood check-in: a quiet before and after, no AI involved ---------- */
@@ -2818,11 +2857,11 @@ function renderDev(){
     seg('ai',[['claude','Claude'],['local','Local rules']],'Reflections')+`<p>Claude: ${AI.state==='on'?'connected (asks permission on first use)':AI.state==='pending'?'connecting…':'not available in this view'}</p>`+
     seg('voice',[['live','Live (browser)'],['demo','Sample transcript']],'Voice')+`<p>Live voice: ${!LiveTranscriber.available?'not supported by this browser (uses keyboard dictation)':voiceBlocked?'blocked in this view (uses keyboard dictation)':'supported by this browser'}</p>`+
     seg('sim',[['null','Real ('+state.meta.savedTotal+')'],...[0,1,2,3,4,5,6,7,8].map(n=>[n,String(n)])],'Journal count for unlocks')+
-    `<div><h4>Data</h4><div class="dseg"><button type="button" id="devDemo">Load demo memories</button>${demoCount()?'<button type="button" id="devDemoOff">Remove demo memories ('+demoCount()+')</button>':''}<button type="button" id="devClear">Clear all data</button>${rescueInfo()?'<button type="button" id="devBack">Bring back cleared data</button>':''}<button type="button" id="devResurf">Show a past entry</button></div></div><p>Developer only. Real settings live behind the gear.</p>`;
+    `<div><h4>Data</h4><div class="dseg"><button type="button" id="devDemo">${DEMO_MODE?'Back to my journal':'Try demo data'}</button><button type="button" id="devDemoClear">Clear demo data</button><button type="button" id="devClear">Clear all data</button>${rescueInfo()?'<button type="button" id="devBack">Bring back cleared data</button>':''}<button type="button" id="devResurf">Show a past entry</button></div></div><p>Developer only. Real settings live behind the gear.</p>`;
   $$('#devP .dseg[data-k] button').forEach(b=>b.addEventListener('click',()=>{const k=b.parentElement.dataset.k;let v=b.dataset.v;
     if(k==='sim')v=v==='null'?null:+v;state.dev[k]=v;persist();
     if(k==='time')applyWorld();if(k==='sim'){updateCustDot();if(page==='customize')renderCustomize()}renderDev()}));
-  $('#devDemo').addEventListener('click',()=>{loadDemo();markDemo();renderDev();updateDock();if(page)openPage(page)});
+  $('#devDemo').addEventListener('click',()=>demoSwitch(!DEMO_MODE));$('#devDemoClear').addEventListener('click',demoClear);
   $('#devDemoOff')&&$('#devDemoOff').addEventListener('click',()=>{const gone=new Set(state.entries.filter(e=>e.demo).map(e=>e.id));
     state.entries=state.entries.filter(e=>!e.demo);
     state.tasks=state.tasks.filter(t=>!(Array.isArray(t.sources)&&t.sources.length&&t.sources.every(x=>gone.has(x.entryId))));
